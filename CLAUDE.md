@@ -41,6 +41,7 @@ This is the source of truth for the engine.
 
 ### Starting play
 - No fixed first player. Any player holding an ordinary card matching the base's suit or number may play first. The first valid play received by the server wins; ties are broken at random.
+- If nobody plays a starting card within the start time limit (including when nobody can), a random player starts by picking one card from the draw pile, and a random neighbour of theirs takes the next turn. That sets the direction.
 - No fixed direction. After the first play, whichever neighbour of the starter (left or right) acts first, by playing or picking, sets the direction.
 
 ### A turn
@@ -60,17 +61,20 @@ This is the source of truth for the engine.
 | K | With 2 players: play again. With 3+ players: ordinary card. |
 | Joker | Next player picks 5 and misses their turn, unless they block or stack. |
 
+- A Joker played normally (not stacking) can go on any card of its own colour.
+
 ### Stacking and blocking
 - Facing a 2 or Joker, a player may: block with an Ace (any suit), stack a 2 or Joker (any suit or colour), or take the penalty (pick the total and miss the turn).
 - Penalties accumulate: each 2 adds 2, each Joker adds 5. Example: 2 then Joker = pick 7.
 - What may be played next:
-  - After an Ace block: same suit as the Ace.
+  - After an Ace block: same suit as the Ace only (8s are still allowed).
   - After a taken stack topped by a 2: same suit as that 2, or another 2.
   - After a taken stack topped by a Joker: same colour as that Joker, or another Joker.
 
 ### Announcements
 - A player must announce "2 cards" or "1 card" before playing the card that leaves them with that many.
 - If they don't, any other player may call them out until play returns to them. Penalty: pick 2.
+- A wrong call-out is refused. The caller is not penalised.
 - UI: an announce button before playing, and a call-out button on other players.
 
 ### Ending a round
@@ -90,7 +94,7 @@ This is the source of truth for the engine.
 | Joker | 50 |
 
 - Over 15: eliminated. Under 15: survives.
-- Exactly 15: **toss**. The hand is ignored. Lay out 4 fresh face-down cards, at least one of which is an 8 or Joker. The player picks 2. Under 15 survives, over 15 is out, exactly 15 tosses again.
+- Exactly 15: **toss**. The hand is ignored. Lay out 4 face-down cards from a fresh, separate deck, at least one of which is an 8 or Joker. The player picks 2. Under 15 survives, over 15 is out, exactly 15 tosses again.
 
 ### Winning
 - Survivors play another round until one player remains, who wins.

@@ -30,6 +30,8 @@ function assertCardsConserved(s: GameState): void {
 function chooseMove(s: GameState, agent: Rng): Move | undefined {
   if (s.phase === 'roundOver') return { type: 'nextRound' };
   const all = s.players.flatMap((p) => getLegalMoves(s, p.id));
+  // The server's start timer: fires when nobody can start, and sometimes when nobody does.
+  if (s.turn.kind === 'race' && (all.length === 0 || agent.next() < 0.1)) return { type: 'forceStart' };
   if (all.length === 0) return undefined;
   const plays = all.filter((m) => m.type === 'play');
   const callOuts = all.filter((m) => m.type === 'callOut');
