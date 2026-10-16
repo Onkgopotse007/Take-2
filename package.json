@@ -1,0 +1,12 @@
+{
+  "name": "take2",
+  "private": true,
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
