@@ -27,20 +27,17 @@ else console.log(result.code, result.reason);
 | `callOut { target }` | anyone else | Target picks 2. |
 | `toss { picks: [i, j] }` | tossing player | Two indices of the 4 face-down cards. |
 | `nextRound` | server | After `roundOver`. |
+| `forceStart` | server | When the start timer runs out during the starting race. A random player picks one card and a random neighbour of theirs plays next. |
 
 ## Interpretations of the rules
 
-The spec in `CLAUDE.md` is the source of truth. Where it was silent or ambiguous, the engine does the following. Each is easy to change.
+The spec in `CLAUDE.md` is the source of truth. Rules the owner has since confirmed have been written into it (forced start, Jokers on their own colour, Ace blocks, wrong call-outs, the separate toss deck). Choices the engine still makes on its own:
 
-1. **Nobody can start.** If no player holds an ordinary card matching the base, the base is buried and another is turned.
-2. **Burying** puts the card at the bottom of the draw pile.
-3. **Joker played normally** matches any card of its own colour (or another Joker).
-4. **After an 8** the next card must be the named suit, another 8, or a Joker of that suit's colour.
-5. **After an Ace block** only the Ace's suit (or an 8) may follow.
-6. **8s after a taken stack**: still playable, because an 8 is playable on any card when no penalty is pending.
-7. **Picking a playable card**: the player chooses to play it or keep it (`pass`). An unplayable pick ends the turn automatically.
-8. **Call-out window** closes when it becomes the player's turn again. Being skipped by a 7 does not close it.
-9. **Wrong call-outs** are simply rejected; the caller is not penalised.
-10. **Toss cards** come from a fresh, separate deck, so the game deck is untouched.
-11. **Start race ties**: the engine accepts the first valid play it is given. Randomising between near-simultaneous plays is the server's job.
-12. **Two players**: when one checks, the other is marked eliminated and the checker wins.
+1. **Burying** puts the card at the bottom of the draw pile.
+2. **After an 8** the next card must be the named suit, another 8, or a Joker of that suit's colour.
+3. **8s after a taken stack** are still playable, because an 8 is playable on any card when no penalty is pending.
+4. **Picking a playable card**: the player chooses to play it or keep it (`pass`). An unplayable pick ends the turn automatically.
+5. **Call-out window** closes when it becomes the player's turn again. Being skipped by a 7 does not close it.
+6. **Start race ties**: the engine accepts the first valid play it is given. Randomising between near-simultaneous plays is the server's job, as is the start timer that sends `forceStart`.
+7. **Forced start**: the starter only picks; they do not play the picked card. The next player plays on the base as normal.
+8. **Two players**: when one checks, the other is marked eliminated and the checker wins.

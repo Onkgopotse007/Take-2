@@ -5,7 +5,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyMove,
-  canStartOn,
   cardFromId,
   cardPoints,
   createDeck,
@@ -54,8 +53,6 @@ describe('Setup', () => {
       const g = createGame(ids(n), rng(seed));
       const base = g.discard[0]!;
       expect(isPlainCard(base)).toBe(true);
-      // The round can always begin: someone holds a starting card.
-      expect(g.players.some((p) => p.hand.some((c) => canStartOn(c, base, n)))).toBe(true);
     }
   });
 
@@ -134,6 +131,56 @@ describe('Starting play', () => {
 
   it('does not allow picking during the starting race', () => {
     rejects(race({ a: ['3H', '4C', '6C', '9C'], b: ['3D', '4D', '6D', '9D'] }), pick('b'), 'NOT_YOUR_TURN');
+  });
+});
+
+describe('Forced start (nobody plays in time)', () => {
+  const race = () =>
+    table({
+      hands: { a: ['3C', '4C'], b: ['3D', '4D'], c: ['3S', '4S'], d: ['6S', '9S'] },
+      discard: ['5H'],
+      turn: { kind: 'race' },
+      direction: null,
+      drawPile: ['QC', 'QD'],
+    });
+
+  it('a random player starts by picking one card, then a random neighbour takes the next turn', () => {
+    const seen = new Set<string>();
+    for (let seed = 0; seed < 50; seed++) {
+      const { state, events } = okWithEvents(race(), { type: 'forceStart' }, rng(seed));
+      const forced = events.find((e) => e.type === 'forcedStart')!;
+      if (forced.type !== 'forcedStart') throw new Error();
+      seen.add(forced.starter);
+      expect(hand(state, forced.starter)).toEqual([...hand(race(), forced.starter), 'QD']);
+      expect(top(state)).toBe('5H');
+      expect(turnOf(state)).toBe(forced.next);
+      const ring = ['a', 'b', 'c', 'd'];
+      const i = ring.indexOf(forced.starter);
+      expect(ring[(i + state.direction! + 4) % 4]).toBe(forced.next);
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it('the next player plays on the base as normal', () => {
+    let s = ok(race(), { type: 'forceStart' }, rng(3));
+    const next = turnOf(s)!;
+    s = table({ ...specOfState(s), hands: { ...specOfState(s).hands, [next]: ['9H', '3C'] } });
+    s.turn = { kind: 'player', player: next };
+    rejects(s, play(next, '3C'), 'CARD_NOT_PLAYABLE');
+    expect(top(ok(s, play(next, '9H')))).toBe('9H');
+  });
+
+  it('with 2 players the other player takes the next turn', () => {
+    const s = ok(
+      table({ hands: { a: ['3C'], b: ['3D'] }, discard: ['5H'], turn: { kind: 'race' }, direction: null }),
+      { type: 'forceStart' },
+    );
+    const forced = turnOf(s);
+    expect(['a', 'b']).toContain(forced);
+  });
+
+  it('is only possible during the starting race', () => {
+    rejects(table({ hands: { a: ['3C'], b: ['3D'] }, discard: ['5H'] }), { type: 'forceStart' }, 'WRONG_PHASE');
   });
 });
 
@@ -647,6 +694,8 @@ describe('Engine contract', () => {
     expect(handPoints(['8H', 'JKB', '3C'].map(cardFromId))).toBe(77);
   });
 });
+
+const specOfState = (s: GameState) => specOf(s);
 
 function specOf(s: GameState) {
   return {

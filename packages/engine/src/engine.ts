@@ -11,7 +11,7 @@ import {
   suitColour,
   suitsOfColour,
 } from './cards';
-import { type Rng, shuffle } from './rng';
+import { type Rng, randomInt, shuffle } from './rng';
 import type {
   GameEvent,
   GameState,
@@ -152,6 +152,7 @@ function dispatch(s: GameState, move: Move, rng: Rng, ev: Events): RejectionCode
     dealRound(s, rng, ev);
     return null;
   }
+  if (move.type === 'forceStart') return forceStart(s, rng, ev);
   const p = s.players.find((pl) => pl.id === move.player);
   if (!p || p.status !== 'active') return 'NOT_IN_GAME';
   switch (move.type) {
@@ -226,6 +227,24 @@ function play(
   }
   // Otherwise a last card that is an action card (or K) leaves the player "on air" with zero cards.
   applyEffects(s, p.id, card, suit, n);
+  return null;
+}
+
+/**
+ * Nobody played a starting card in time. A random player starts by picking one card, then a random
+ * neighbour of theirs takes the next turn, which also sets the direction.
+ */
+function forceStart(s: GameState, rng: Rng, ev: Events): RejectionCode | null {
+  if (s.phase !== 'playing' || s.turn.kind !== 'race') return 'WRONG_PHASE';
+  const ring = activePlayers(s);
+  const starter = ring[randomInt(rng, ring.length)]!;
+  const count = drawCards(s, starter, 1, rng, ev);
+  ev.push({ type: 'picked', player: starter.id, count, reason: 'forcedStart' });
+  s.direction = ring.length === 2 || randomInt(rng, 2) === 0 ? 1 : -1;
+  const next = stepFrom(s, starter.id, 1);
+  ev.push({ type: 'forcedStart', starter: starter.id, next });
+  ev.push({ type: 'directionSet', direction: s.direction });
+  beginTurn(s, next);
   return null;
 }
 
@@ -353,13 +372,12 @@ function toss(s: GameState, p: PlayerState, picks: [number, number], rng: Rng, e
 
 function dealRound(s: GameState, rng: Rng, ev: Events): void {
   const players = activePlayers(s);
-  const n = players.length;
   for (;;) {
     const pile = shuffle(createDeck(), rng);
     const hands = players.map(() => [] as Card[]);
     for (let r = 0; r < HAND_SIZE; r++) for (const hand of hands) hand.push(pile.pop()!);
-    const base = turnBase(pile, hands, n);
-    if (!base) continue; // Practically unreachable: no usable base anywhere in the pile. Redeal.
+    const base = turnBase(pile);
+    if (!base) continue; // Unreachable in practice: no plain card left in the pile. Redeal.
 
     players.forEach((p, i) => {
       p.hand = hands[i]!;
@@ -381,14 +399,11 @@ function dealRound(s: GameState, rng: Rng, ev: Events): void {
   }
 }
 
-/**
- * Turns the base card. Non-plain cards are buried at the bottom of the pile. A base that nobody can
- * start on is also buried, so a round can always begin.
- */
-function turnBase(pile: Card[], hands: Card[][], n: number): Card | undefined {
+/** Turns the base card. Non-plain cards are buried at the bottom of the pile and another is turned. */
+function turnBase(pile: Card[]): Card | undefined {
   for (let tries = pile.length; tries > 0; tries--) {
     const card = pile.pop()!;
-    if (isPlainCard(card) && hands.some((h) => h.some((c) => canStartOn(c, card, n)))) return card;
+    if (isPlainCard(card)) return card;
     pile.unshift(card);
   }
   return undefined;

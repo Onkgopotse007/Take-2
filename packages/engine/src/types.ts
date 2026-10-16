@@ -82,15 +82,18 @@ export type Move =
   | { type: 'pass'; player: PlayerId }
   | { type: 'callOut'; player: PlayerId; target: PlayerId }
   | { type: 'toss'; player: PlayerId; picks: [number, number] }
-  | { type: 'nextRound' };
+  | { type: 'nextRound' }
+  /** Server move when nobody starts in time: a random player picks, a random neighbour plays next. */
+  | { type: 'forceStart' };
 
-export type PickReason = 'turn' | 'penalty' | 'callOut' | 'onAir';
+export type PickReason = 'turn' | 'penalty' | 'callOut' | 'onAir' | 'forcedStart';
 
 export type GameEvent =
   | { type: 'roundStarted'; round: number; base: Card }
   | { type: 'played'; player: PlayerId; card: Card; suit?: Suit }
   | { type: 'announced'; player: PlayerId; cardsLeft: number }
   | { type: 'directionSet'; direction: 1 | -1 }
+  | { type: 'forcedStart'; starter: PlayerId; next: PlayerId }
   | { type: 'picked'; player: PlayerId; count: number; reason: PickReason }
   | { type: 'passed'; player: PlayerId }
   | { type: 'calledOut'; player: PlayerId; target: PlayerId }
