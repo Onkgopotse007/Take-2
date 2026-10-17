@@ -3,7 +3,7 @@
 Mobile-first Vite + React client. Talks to the game server at `<same origin>/api` (Vite proxies it in development, Caddy in production). Set `VITE_SERVER_URL` to point elsewhere.
 
 ```sh
-pnpm --filter @take2/server dev   # game server on :2567
+pnpm --filter @take2/server dev   # game server on :2567 (set PORT in apps/server/.env to change it)
 pnpm --filter @take2/client dev   # http://localhost:5173 (also on your Wi-Fi IP, for testing on a phone)
 pnpm --filter @take2/client test
 pnpm --filter @take2/client build # static files in dist/
