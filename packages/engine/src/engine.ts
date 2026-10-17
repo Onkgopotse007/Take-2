@@ -231,8 +231,9 @@ function play(
 }
 
 /**
- * Nobody played a starting card in time. A random player starts by picking one card, then a random
- * neighbour of theirs takes the next turn, which also sets the direction.
+ * Nobody played a starting card in time. A random player starts by picking one card, which they may
+ * play if it is valid on the base, as after any pick. A random neighbour of theirs plays next, which
+ * also sets the direction.
  */
 function forceStart(s: GameState, rng: Rng, ev: Events): RejectionCode | null {
   if (s.phase !== 'playing' || s.turn.kind !== 'race') return 'WRONG_PHASE';
@@ -244,7 +245,13 @@ function forceStart(s: GameState, rng: Rng, ev: Events): RejectionCode | null {
   const next = stepFrom(s, starter.id, 1);
   ev.push({ type: 'forcedStart', starter: starter.id, next });
   ev.push({ type: 'directionSet', direction: s.direction });
-  beginTurn(s, next);
+  const picked = count > 0 ? starter.hand[starter.hand.length - 1]! : undefined;
+  if (picked && canPlayCard(s, picked)) {
+    beginTurn(s, starter.id);
+    s.pickedCardId = picked.id;
+  } else {
+    beginTurn(s, next);
+  }
   return null;
 }
 

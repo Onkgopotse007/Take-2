@@ -27,7 +27,7 @@ else console.log(result.code, result.reason);
 | `callOut { target }` | anyone else | Target picks 2. |
 | `toss { picks: [i, j] }` | tossing player | Two indices of the 4 face-down cards. |
 | `nextRound` | server | After `roundOver`. |
-| `forceStart` | server | When the start timer runs out during the starting race. A random player picks one card and a random neighbour of theirs plays next. |
+| `forceStart` | server | When the start timer runs out during the starting race. A random player picks one card (and may play or keep it if valid), then a random neighbour of theirs plays next. |
 
 ## Interpretations of the rules
 
@@ -39,5 +39,5 @@ The spec in `CLAUDE.md` is the source of truth. Rules the owner has since confir
 4. **Picking a playable card**: the player chooses to play it or keep it (`pass`). An unplayable pick ends the turn automatically.
 5. **Call-out window** closes when it becomes the player's turn again. Being skipped by a 7 does not close it.
 6. **Start race ties**: the engine accepts the first valid play it is given. Randomising between near-simultaneous plays is the server's job, as is the start timer that sends `forceStart`.
-7. **Forced start**: the starter only picks; they do not play the picked card. The next player plays on the base as normal.
+7. **Forced start**: the starter's picked card follows the normal pick rule, so any card valid on the base (including an 8 or action card) may be played.
 8. **Two players**: when one checks, the other is marked eliminated and the checker wins.

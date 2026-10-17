@@ -161,6 +161,22 @@ describe('Forced start (nobody plays in time)', () => {
     expect(seen.size).toBe(4);
   });
 
+  it('the starter may play the picked card if it is valid, then the chosen neighbour plays', () => {
+    const s0 = table({ ...specOf(race()), turn: { kind: 'race' }, direction: null, drawPile: ['QC', '9H'] });
+    for (let seed = 0; seed < 20; seed++) {
+      const { state, events } = okWithEvents(s0, { type: 'forceStart' }, rng(seed));
+      const forced = events.find((e) => e.type === 'forcedStart')!;
+      if (forced.type !== 'forcedStart') throw new Error();
+      expect(turnOf(state)).toBe(forced.starter);
+      expect(state.pickedCardId).toBe('9H');
+      rejects(state, play(forced.starter, hand(state, forced.starter)[0]!), 'ONLY_PICKED_CARD');
+      const played = ok(state, play(forced.starter, '9H'));
+      expect(top(played)).toBe('9H');
+      expect(turnOf(played)).toBe(forced.next);
+      expect(turnOf(ok(state, pass(forced.starter)))).toBe(forced.next);
+    }
+  });
+
   it('the next player plays on the base as normal', () => {
     let s = ok(race(), { type: 'forceStart' }, rng(3));
     const next = turnOf(s)!;

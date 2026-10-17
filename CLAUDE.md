@@ -41,7 +41,7 @@ This is the source of truth for the engine.
 
 ### Starting play
 - No fixed first player. Any player holding an ordinary card matching the base's suit or number may play first. The first valid play received by the server wins; ties are broken at random.
-- If nobody plays a starting card within the start time limit (including when nobody can), a random player starts by picking one card from the draw pile, and a random neighbour of theirs takes the next turn. That sets the direction.
+- If nobody plays a starting card within the start time limit (including when nobody can), a random player starts by picking one card from the draw pile. They may play it if it is valid, as after any pick. A random neighbour of theirs then takes the next turn, which sets the direction.
 - No fixed direction. After the first play, whichever neighbour of the starter (left or right) acts first, by playing or picking, sets the direction.
 
 ### A turn
