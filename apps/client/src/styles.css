@@ -73,6 +73,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 .table-centre { position: absolute; left: 13%; right: 13%; top: 13%; bottom: 9%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 0 12px; }
 .piles { display: flex; align-items: flex-end; gap: 18px; }
 .pile-btn { position: relative; width: 74px; height: 104px; padding: 0; border: none; background: transparent; border-radius: 10px; }
+.pile-btn.ready { animation: glow 1.6s ease-in-out infinite; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.9); } 50% { box-shadow: 0 0 0 7px rgba(242, 193, 78, 0.35); } }
+.pile-label.ready { color: var(--lamp); font-weight: 800; }
 .pile-label { font-size: 12px; color: var(--cream); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); min-height: 16px; }
 .table-note { font-size: 13px; color: var(--cream); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); min-height: 18px; }
 .chip-note { padding: 6px 14px; border-radius: 16px; background: var(--card); color: var(--ink); font-weight: 800; font-size: 15px; }
@@ -116,18 +119,21 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 /* Hand */
-.hand-area { display: flex; flex-direction: column; gap: 6px; padding: 0 16px max(16px, env(safe-area-inset-bottom)); }
+.hand-area { display: flex; flex-direction: column; gap: 6px; padding: 6px 16px max(16px, env(safe-area-inset-bottom)); border-top: 3px solid transparent; border-radius: 24px 24px 0 0; transition: background-color 200ms, border-color 200ms; }
+.hand-area.my-turn { border-top-color: var(--lamp); background: rgba(242, 193, 78, 0.1); }
 .hand-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; }
 .hand-status { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; min-width: 0; }
 .hand-status.mine { color: var(--lamp); }
 .hand-actions { display: flex; gap: 8px; }
-.hand-scroll { overflow-x: auto; overflow-y: visible; padding-top: 32px; }
+.hand-scroll { overflow-x: auto; overflow-y: visible; padding-top: 58px; }
 .hand-cards { position: relative; height: calc(72px * 1.42 + 4px); margin: 0 auto; }
 .hand-card { position: absolute; bottom: 0; padding: 0; border: none; background: none; transition: transform 120ms ease-out; border-radius: 10px; }
 .hand-card .card { --w: 72px; }
 .hand-card.playable { transform: translateY(-6px); }
 .hand-card.selected { transform: translateY(-28px); }
 .hand-card.selected .card { border-color: var(--lamp); }
+.hand-card.selected { z-index: 2; }
+.play-tag { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap; background: var(--lamp); color: var(--ink); font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
 .hand-empty { text-align: center; color: var(--muted); padding: 32px 0; }
 .status-line { margin: 0; min-height: 22px; text-align: center; font-size: 15px; color: var(--muted); }
 
@@ -150,6 +156,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 .toss-card .card-back, .toss-card .card { --w: 66px; }
 .toss-card.chosen { transform: translateY(-14px); }
 .results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.tips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.tips li { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: baseline; font-size: 15px; line-height: 1.35; }
+.tips strong { font-weight: 800; }
+.tips-card { padding: 14px 16px; border-radius: 16px; background: #3a2719; display: flex; flex-direction: column; gap: 10px; }
+.tips-card h2 { margin: 0; font-size: 18px; }
 .results li { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 14px; background: #efe5d6; }
 .results .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .results .who { font-weight: 800; }

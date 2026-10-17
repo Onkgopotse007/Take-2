@@ -50,6 +50,21 @@ describe('Hand', () => {
     expect(onPlay).not.toHaveBeenCalled();
   });
 
+  it('labels the lifted card so the second tap is obvious', async () => {
+    setup();
+    expect(screen.queryByText('Tap to play')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: '9 of hearts' }));
+    expect(screen.getByText('Tap to play')).toBeInTheDocument();
+  });
+
+  it('lifts a just-picked card straight away, so one tap plays it', async () => {
+    const onPlay = vi.fn();
+    render(<Hand cards={['9H', '6H'].map(cardFromId)} playable={new Set(['6H'])} onPlay={onPlay} onEight={() => {}} onStatus={() => {}} autoSelect="6H" />);
+    expect(screen.getByRole('button', { name: '6 of hearts' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: '6 of hearts' }));
+    expect(onPlay).toHaveBeenCalledWith('6H');
+  });
+
   it('gives playable cards a faint lift', () => {
     setup();
     expect(screen.getByRole('button', { name: '9 of hearts' }).className).toContain('playable');

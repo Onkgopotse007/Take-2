@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { shareTable } from '../lib/share';
+import { HowToSheet } from './HowTo';
 
 export function Menu({ code, onClose, onLeave }: { code: string; onClose(): void; onLeave(): void }) {
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [howTo, setHowTo] = useState(false);
+  if (howTo) return <HowToSheet onClose={() => setHowTo(false)} />;
   return (
     <>
       <div className="scrim" onClick={onClose} />
@@ -14,6 +17,9 @@ export function Menu({ code, onClose, onLeave }: { code: string; onClose(): void
           Invite people
         </button>
         {note && <p>{note}</p>}
+        <button type="button" className="btn" onClick={() => setHowTo(true)}>
+          How to play
+        </button>
         {confirming ? (
           <>
             <p>Leave this table? Leaving during a game counts as forfeiting it.</p>
