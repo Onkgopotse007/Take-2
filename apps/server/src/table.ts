@@ -32,7 +32,7 @@ export const DEFAULT_TIMINGS: Timings = {
   countdownMs: 3_000,
   raceTieWindowMs: 150,
   startTimeoutMs: 15_000,
-  turnTimeoutMs: 30_000,
+  turnTimeoutMs: 10_000,
   disconnectedTurnMs: 5_000,
   tossTimeoutMs: 20_000,
   roundBreakMs: 10_000,

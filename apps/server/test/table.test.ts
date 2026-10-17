@@ -245,6 +245,15 @@ describe('Messages', () => {
     expect(t.last('b', 'rejected')).toEqual({ code: 'NOT_YOUR_TURN', reason: 'It is not your turn.' });
   });
 
+  it('never tells players who can be called out', () => {
+    const t = withGame({ a: ['6H', '9H', '3C'], b: ['3D', '4D'], c: ['3S', '4S'] }, ['5H']);
+    t.table.move('a', { type: 'play', cardId: '6H' }); // down to 2 without announcing
+    const json = JSON.stringify(t.last('b', 'table'));
+    expect(json).not.toContain('callable');
+    t.table.move('b', { type: 'callOut', target: 'a' });
+    expect(t.last('b', 'events')).toContainEqual({ type: 'calledOut', player: 'b', target: 'a' });
+  });
+
   it('sets the player from the connection, not the message', () => {
     const t = withGame({ a: ['3C'], b: ['3D'] }, ['5H']);
     t.table.move('b', { type: 'pick', player: 'a' });

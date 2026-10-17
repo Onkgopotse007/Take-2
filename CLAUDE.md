@@ -49,6 +49,7 @@ This is the source of truth for the engine.
 - A normal play must match the top card's suit or number (8s are the exception, see below).
 - A player may pick even when holding a playable card.
 - After picking, the player may play the picked card if it is valid, and no other card. Otherwise the turn ends.
+- Each turn has a 10 second limit. When it runs out, the player keeps a card they just picked, otherwise a card is picked for them (taking any pending penalty).
 
 ### Action cards
 | Card | Effect |
@@ -75,7 +76,7 @@ This is the source of truth for the engine.
 - A player must announce "2 cards" or "1 card" before playing the card that leaves them with that many.
 - If they don't, any other player may call them out until play returns to them. Penalty: pick 2.
 - A wrong call-out is refused. The caller is not penalised.
-- UI: an announce button before playing, and a call-out button on other players.
+- UI: an announce button before playing, and a call-out button on other players. Neither gives hints: the announce button never lights up when it is needed, and nothing shows who can be called out. Players must notice themselves. The server never sends who is callable.
 
 ### Ending a round
 - A player **checks** by playing their last card when it is an ordinary card (never an action card or K).

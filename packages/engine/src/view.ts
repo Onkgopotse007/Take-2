@@ -6,11 +6,13 @@ export interface PublicPlayer {
   id: PlayerId;
   cardCount: number;
   status: 'active' | 'eliminated';
-  callable: boolean;
   onAir: boolean;
 }
 
-/** What one player is allowed to see. Other hands, the draw pile and toss cards stay hidden. */
+/**
+ * What one player is allowed to see. Other hands, the draw pile and toss cards stay hidden, and so
+ * does who can be called out: players have to notice a missing announcement themselves.
+ */
 export interface PlayerView {
   me: PlayerId;
   hand: Card[];
@@ -43,7 +45,6 @@ export function getPlayerView(state: GameState, me: PlayerId): PlayerView {
       id: p.id,
       cardCount: p.hand.length,
       status: p.status,
-      callable: p.callable,
       onAir: state.phase === 'playing' && p.status === 'active' && p.hand.length === 0,
     })),
     phase: state.phase,

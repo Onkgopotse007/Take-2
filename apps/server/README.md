@@ -42,7 +42,7 @@ All timers run on the server clock (`src/table.ts`, `DEFAULT_TIMINGS`):
 | Countdown | 3 s | After dealing. Starting plays before it ends are refused. |
 | Start tie window | 150 ms | Starting plays within this of the first one tie; one wins at random. |
 | Start timeout | 15 s | Nobody started: a random player picks (and may play), a random neighbour goes next. |
-| Turn | 30 s | Out of time: keep the picked card, otherwise pick (taking any penalty). |
+| Turn | 10 s | Out of time: keep the picked card, otherwise pick (taking any penalty). |
 | Disconnected turn | 5 s | Turn time for a player who has dropped. |
 | Toss | 20 s | Out of time: two random cards are picked. |
 | Round break | 10 s | Between rounds. Interstitial ads will go here. |
