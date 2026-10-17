@@ -1,0 +1,11 @@
+{
+  "name": "Take 2",
+  "short_name": "Take 2",
+  "description": "The Botswana card game also called Crusades.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2A1C14",
+  "theme_color": "#2A1C14",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

@@ -21,5 +21,8 @@
     "@colyseus/core": "^0.18.18",
     "@colyseus/ws-transport": "^0.18.4",
     "@take2/engine": "workspace:*"
+  },
+  "exports": {
+    "./protocol": "./src/protocol.ts"
   }
 }
