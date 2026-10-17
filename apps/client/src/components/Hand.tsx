@@ -14,10 +14,12 @@ interface Props {
   /** Called on the second tap of an 8, so the suit picker can open. */
   onEight(cardId: string): void;
   onStatus(text: string): void;
+  /** A card to lift straight away, e.g. the one just picked. */
+  autoSelect?: string | null;
 }
 
 /** Tap a card to lift it, tap it again to play it. */
-export function Hand({ cards, playable, onPlay, onEight, onStatus }: Props) {
+export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = null }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(358);
@@ -31,6 +33,10 @@ export function Hand({ cards, playable, onPlay, onEight, onStatus }: Props) {
     ro?.observe(el);
     return () => ro?.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (autoSelect) setSelected(autoSelect);
+  }, [autoSelect]);
 
   // Forget the selection once that card has left the hand.
   const ids = cards.map((c) => c.id).join(',');
@@ -73,6 +79,11 @@ export function Hand({ cards, playable, onPlay, onEight, onStatus }: Props) {
               aria-pressed={isSelected}
               onClick={() => tap(card)}
             >
+              {isSelected && (
+                <span className="play-tag" aria-hidden="true">
+                  Tap to play
+                </span>
+              )}
               <CardFace card={card} />
             </button>
           );

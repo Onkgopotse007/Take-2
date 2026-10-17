@@ -47,6 +47,10 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
     setEightId(null);
   }, [turnKey]);
 
+  useEffect(() => {
+    if (myTurn) navigator.vibrate?.(60);
+  }, [myTurn, turnKey]);
+
   const play = (cardId: string, suit?: Suit) => {
     session.move({ type: 'play', cardId, ...(suit ? { suit } : {}), announce: announcing });
     setAnnouncing(false);
@@ -81,13 +85,14 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
 
   let status: string;
   if (view.phase !== 'playing') status = 'Round over';
-  else if (view.turn.kind === 'race') status = raceOpen ? 'Anyone with a match can start' : 'Get ready';
+  else if (view.turn.kind === 'race') status = raceOpen ? 'Play a matching card to start' : 'Get ready';
   else if (myTurn) status = 'Your turn';
   else if (view.turn.kind === 'neighbours') status = `${[...turnIds].map((id) => who(id)).join(' or ')} to play`;
   else if (view.turn.kind === 'player') status = `${who(view.turn.player)}'s turn`;
   else status = '';
 
-  const pileLabel = myTurn && view.penalty > 0 ? `Tap to take ${view.penalty}` : `${view.drawPileCount} left`;
+  const pileReady = myTurn && !view.pickedCardId;
+  const pileLabel = pileReady ? (view.penalty > 0 ? `Tap to take ${view.penalty}` : 'Tap to pick') : `${view.drawPileCount} left`;
   const onAir = !meOut && view.phase === 'playing' && hand.length === 0;
 
   return (
@@ -116,11 +121,11 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
           ) : (
             <div className="piles">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <button type="button" className="pile-btn" aria-label={`Draw pile, ${view.drawPileCount} cards. Tap to pick.`} onClick={() => session.move({ type: 'pick' })}>
+                <button type="button" className={`pile-btn${pileReady ? ' ready' : ''}`} aria-label={`Draw pile, ${view.drawPileCount} cards. Tap to pick.`} onClick={() => session.move({ type: 'pick' })}>
                   <CardBack width={70} style={{ position: 'absolute', left: 4, top: 4, background: '#5E95BD' }} />
                   <CardBack width={70} style={{ position: 'absolute', left: 0, top: 0 }} />
                 </button>
-                <span className="pile-label">{pileLabel}</span>
+                <span className={`pile-label${pileReady ? ' ready' : ''}`}>{pileLabel}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 {top && <CardFace card={top} width={84} style={{ transform: 'rotate(4deg)' }} />}
@@ -164,7 +169,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
         ))}
       </section>
 
-      <section className="hand-area" aria-label="Your hand">
+      <section className={`hand-area${myTurn ? ' my-turn' : ''}`} aria-label="Your hand">
         <div className="hand-bar">
           <div className={`hand-status${myTurn ? ' mine' : ''}`}>
             {myTurn && secs !== null && <TimerRing seconds={secs} total={10} />}
@@ -189,7 +194,14 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
         ) : onAir ? (
           <p className="hand-empty">You are on air. Tap the pile on your turn.</p>
         ) : (
-          <Hand cards={hand} playable={playable} onPlay={(id) => play(id)} onEight={setEightId} onStatus={setHint} />
+          <Hand
+            cards={hand}
+            playable={playable}
+            onPlay={(id) => play(id)}
+            onEight={setEightId}
+            onStatus={setHint}
+            autoSelect={myTurn ? view.pickedCardId : null}
+          />
         )}
         <p className="status-line" role="status">
           {hint}
