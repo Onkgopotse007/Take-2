@@ -41,6 +41,7 @@ This is the source of truth for the engine.
 
 ### Starting play
 - No fixed first player. Any player holding an ordinary card matching the base's suit or number may play first. The first valid play received by the server wins; ties are broken at random.
+- One against one (2 players), any card that would be valid on the base may start, action cards included, and its effect applies (a 7 plays again, a 2 makes the other pick 2, an 8 names a suit).
 - If nobody plays a starting card within the start time limit (including when nobody can), a random player starts by picking one card from the draw pile. They may play it if it is valid, as after any pick. A random neighbour of theirs then takes the next turn, which sets the direction.
 - No fixed direction. After the first play, whichever neighbour of the starter (left or right) acts first, by playing or picking, sets the direction.
 
@@ -68,7 +69,7 @@ This is the source of truth for the engine.
 - Facing a 2 or Joker, a player may: block with an Ace (any suit), stack a 2 or Joker (any suit or colour), or take the penalty (pick the total and miss the turn).
 - Penalties accumulate: each 2 adds 2, each Joker adds 5. Example: 2 then Joker = pick 7.
 - What may be played next:
-  - After an Ace block: same suit as the Ace only (8s are still allowed).
+  - After an Ace block: same suit as the Ace, or another Ace, which changes the suit to its own (8s are still allowed).
   - After a taken stack topped by a 2: same suit as that 2, or another 2.
   - After a taken stack topped by a Joker: same colour as that Joker, or another Joker.
 
@@ -77,6 +78,11 @@ This is the source of truth for the engine.
 - If they don't, any other player may call them out until play returns to them. Penalty: pick 2.
 - A wrong call-out is refused. The caller is not penalised.
 - UI: an announce button before playing, and a call-out button on other players. Neither gives hints: the announce button never lights up when it is needed, and nothing shows who can be called out. Players must notice themselves. The server never sends who is callable.
+
+### Forfeits
+- A player whose turn timer runs out three turns in a row forfeits the game. Acting in any way (even just picking) resets the count.
+- Leaving the table during a game also forfeits it.
+- A forfeiting player is out: their cards go under the draw pile, a penalty they were facing lapses (the next player follows the stack as if it had been taken), and play passes on. If only one player is left, they win.
 
 ### Ending a round
 - A player **checks** by playing their last card when it is an ordinary card (never an action card or K).

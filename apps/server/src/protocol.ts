@@ -4,7 +4,7 @@ import type { GameEvent, Move, PlayerView, RejectionCode } from '@take2/engine';
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 /** A move as a client sends it. The server fills in `player` from the connection. */
-export type ClientMove = DistributiveOmit<Exclude<Move, { type: 'nextRound' } | { type: 'forceStart' }>, 'player'>;
+export type ClientMove = DistributiveOmit<Exclude<Move, { type: 'nextRound' } | { type: 'forceStart' } | { type: 'forfeit' }>, 'player'>;
 
 /** Client -> server message types. */
 export interface ClientMessages {
@@ -18,6 +18,8 @@ export interface ClientMessages {
 /** Options for `client.create('table', ...)` and `client.joinById(code, ...)`. */
 export interface JoinOptions {
   name?: string;
+  /** From an earlier snapshot: rejoins that seat even if the session has expired. */
+  seatKey?: string;
 }
 
 export interface Seat {
@@ -32,6 +34,8 @@ export type TableStatus = 'lobby' | 'playing' | 'finished';
 export interface TableSnapshot {
   code: string;
   you: string;
+  /** Secret for `you` only. Keep it on the device to get back into this seat. */
+  seatKey: string | null;
   hostId: string | null;
   seats: Seat[];
   status: TableStatus;

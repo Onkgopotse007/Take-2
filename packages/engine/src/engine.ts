@@ -13,6 +13,7 @@ import {
 } from './cards';
 import { type Rng, randomInt, shuffle } from './rng';
 import type {
+  ForfeitReason,
   GameEvent,
   GameState,
   Lead,
@@ -104,8 +105,10 @@ export function canPlayCard(state: GameState, card: Card): boolean {
 
 /** True if `card` may open a round on `base`. */
 export function canStartOn(card: Card, base: Card, playerCount: number): boolean {
-  if (card.kind !== 'suited' || base.kind !== 'suited') return false;
-  if (!isOrdinaryCard(card, playerCount)) return false;
+  if (base.kind !== 'suited') return false;
+  // One against one, any card that would be valid on the base may start, action cards included.
+  if (playerCount === 2) return isRank(card, '8') || matchesLead(card, leadFromCard(base));
+  if (card.kind !== 'suited' || !isOrdinaryCard(card, playerCount)) return false;
   return card.suit === base.suit || card.rank === base.rank;
 }
 
@@ -153,6 +156,11 @@ function dispatch(s: GameState, move: Move, rng: Rng, ev: Events): RejectionCode
     return null;
   }
   if (move.type === 'forceStart') return forceStart(s, rng, ev);
+  if (move.type === 'forfeit') {
+    const quitter = s.players.find((pl) => pl.id === move.player);
+    if (!quitter || quitter.status !== 'active') return 'NOT_IN_GAME';
+    return forfeit(s, quitter, move.reason, ev);
+  }
   const p = s.players.find((pl) => pl.id === move.player);
   if (!p || p.status !== 'active') return 'NOT_IN_GAME';
   switch (move.type) {
@@ -186,14 +194,16 @@ function play(
     if (idx < 0) return 'CARD_NOT_IN_HAND';
     const card = p.hand[idx]!;
     if (!canStartOn(card, topCard(s)!, n)) return 'NOT_A_STARTING_CARD';
+    const startsWithEight = isRank(card, '8');
+    if (startsWithEight && (!suit || !SUITS.includes(suit))) return 'SUIT_REQUIRED';
     p.hand.splice(idx, 1);
     s.discard.push(card);
-    s.lead = leadFromCard(card);
-    ev.push({ type: 'played', player: p.id, card });
+    ev.push(startsWithEight ? { type: 'played', player: p.id, card, suit: suit! } : { type: 'played', player: p.id, card });
     if (n === 2) {
       s.direction = 1;
-      beginTurn(s, stepFrom(s, p.id, 1));
+      applyEffects(s, p.id, card, suit, n);
     } else {
+      s.lead = leadFromCard(card);
       s.turn = { kind: 'neighbours', starter: p.id };
     }
     return null;
@@ -264,7 +274,8 @@ function applyEffects(s: GameState, pid: PlayerId, card: Card, suit: Suit | unde
   } else {
     switch (card.rank) {
       case 'A':
-        s.lead = facingPenalty ? { suits: [card.suit], colours: [], ranks: [] } : leadFromCard(card);
+        // After a block only the Ace's suit, or another Ace (which changes the suit), may follow.
+        s.lead = facingPenalty ? { suits: [card.suit], colours: [], ranks: ['A'] } : leadFromCard(card);
         s.penalty = 0;
         break;
       case '2':
@@ -303,11 +314,7 @@ function pick(s: GameState, p: PlayerState, rng: Rng, ev: Events): RejectionCode
   if (s.penalty > 0) {
     const count = drawCards(s, p, s.penalty, rng, ev);
     ev.push({ type: 'picked', player: p.id, count, reason: 'penalty' });
-    const top = topCard(s)!;
-    s.lead =
-      top.kind === 'joker'
-        ? { suits: suitsOfColour(top.colour), colours: [], ranks: ['joker'] }
-        : { suits: [top.suit], colours: [], ranks: ['2'] };
+    s.lead = leadAfterTakenStack(topCard(s)!);
     s.penalty = 0;
     beginTurn(s, stepFrom(s, p.id, 1));
     return null;
@@ -371,6 +378,69 @@ function toss(s: GameState, p: PlayerState, picks: [number, number], rng: Rng, e
   ev.push({ type: 'tossResolved', player: p.id, total, outcome });
   if (Object.keys(s.tossLayouts).length === 0) finaliseRound(s, ev);
   return null;
+}
+
+/**
+ * A player leaves the game for good (left the table, or missed too many turns). Their cards go
+ * under the draw pile and play carries on without them.
+ */
+function forfeit(s: GameState, p: PlayerState, reason: ForfeitReason, ev: Events): RejectionCode | null {
+  if (s.phase === 'gameOver') return 'WRONG_PHASE';
+  ev.push({ type: 'forfeited', player: p.id, reason });
+
+  if (s.phase === 'toss' || s.phase === 'roundOver') {
+    if (s.phase === 'toss') {
+      delete s.tossLayouts[p.id];
+      s.roundResult!.outcomes[p.id] = 'eliminated';
+      if (Object.keys(s.tossLayouts).length === 0) {
+        finaliseRound(s, ev);
+        return null;
+      }
+    }
+    eliminate(s, p, ev);
+    return null;
+  }
+
+  // Playing: work out who acts next before they leave the ring.
+  let next: PlayerId | null = null;
+  const t = s.turn;
+  if (t.kind === 'player' && t.player === p.id) {
+    if (s.penalty > 0) {
+      // Nobody takes the stack; the next player follows it as if it had been taken.
+      s.lead = leadAfterTakenStack(topCard(s)!);
+      s.penalty = 0;
+    }
+    next = stepFrom(s, p.id, 1);
+  } else if (t.kind === 'neighbours') {
+    const { left, right } = neighbours(s, t.starter);
+    if (p.id === t.starter || p.id === right) {
+      s.direction = 1;
+      next = left;
+    } else if (p.id === left) {
+      s.direction = -1;
+      next = right;
+    }
+  }
+  s.drawPile.unshift(...p.hand);
+  p.hand = [];
+  eliminate(s, p, ev);
+  if (s.phase === 'playing' && next) beginTurn(s, next);
+  return null;
+}
+
+function eliminate(s: GameState, p: PlayerState, ev: Events): void {
+  p.status = 'eliminated';
+  p.callable = false;
+  const remaining = activePlayers(s);
+  if (remaining.length === 1) {
+    s.turn = { kind: 'none' };
+    s.penalty = 0;
+    s.pickedCardId = null;
+    s.tossLayouts = {};
+    s.phase = 'gameOver';
+    s.winner = remaining[0]!.id;
+    ev.push({ type: 'gameOver', winner: s.winner });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -528,6 +598,13 @@ function refillDrawPile(s: GameState, rng: Rng, ev: Events): void {
   s.drawPile = shuffle(s.discard, rng);
   s.discard = [top];
   ev.push({ type: 'reshuffled', drawPileCount: s.drawPile.length });
+}
+
+/** What may follow once a stack topped by `top` (a 2 or Joker) has been taken. */
+function leadAfterTakenStack(top: Card): Lead {
+  return top.kind === 'joker'
+    ? { suits: suitsOfColour(top.colour), colours: [], ranks: ['joker'] }
+    : { suits: [top.suit], colours: [], ranks: ['2'] };
 }
 
 export function leadFromCard(card: Card): Lead {

@@ -261,7 +261,57 @@ describe('Messages', () => {
   });
 });
 
+describe('Missed turns', () => {
+  it('forfeits a player after 3 timed-out turns in a row', () => {
+    const t = withGame({ a: ['3C', '4C'], b: ['3D', '4D'], c: ['3S', '4S'] }, ['5H'], {
+      drawPile: Array.from({ length: 20 }, () => cardFromId('QC')),
+    });
+    // a times out; b and c pick each time, which counts as acting.
+    for (let round = 0; round < 2; round++) {
+      t.clock.advance(T.turnTimeoutMs);
+      t.table.move('b', { type: 'pick' });
+      t.table.move('c', { type: 'pick' });
+    }
+    expect(t.last('b', 'table')!.game!.players.find((p) => p.id === 'a')!.status).toBe('active');
+    t.clock.advance(T.turnTimeoutMs);
+    expect(t.last('b', 'events')).toContainEqual({ type: 'forfeited', player: 'a', reason: 'missedTurns' });
+    expect(t.last('b', 'table')!.game!.players.find((p) => p.id === 'a')!.status).toBe('eliminated');
+  });
+
+  it('resets the count whenever the player acts', () => {
+    const t = withGame({ a: ['3C', '4C'], b: ['3D', '4D'], c: ['3S', '4S'] }, ['5H'], {
+      drawPile: Array.from({ length: 20 }, () => cardFromId('QC')),
+    });
+    for (let round = 0; round < 4; round++) {
+      if (round === 2) t.table.move('a', { type: 'pick' });
+      else t.clock.advance(T.turnTimeoutMs);
+      t.table.move('b', { type: 'pick' });
+      t.table.move('c', { type: 'pick' });
+    }
+    expect(t.last('b', 'table')!.game!.players.find((p) => p.id === 'a')!.status).toBe('active');
+  });
+});
+
+describe('Seat keys', () => {
+  it('gives each player a private key that reclaims their seat mid-game', () => {
+    const t = withGame({ a: ['3C'], b: ['3D'], c: ['3S'] }, ['5H']);
+    const key = t.last('b', 'table')!.seatKey!;
+    expect(key).toHaveLength(24);
+    expect(JSON.stringify(t.last('a', 'table'))).not.toContain(key);
+    t.table.setConnected('b', false);
+    expect(t.table.reclaim('wrong')).toBeNull();
+    expect(t.table.reclaim(key)).toBe('b');
+    expect(t.last('a', 'table')!.seats.find((s) => s.id === 'b')!.connected).toBe(true);
+  });
+});
+
 describe('Leaving and rematches', () => {
+  it('forfeits a player who chooses to leave mid-game', () => {
+    const t = withGame({ a: ['3C'], b: ['3D'], c: ['3S'] }, ['5H']);
+    t.table.leave('b', true);
+    expect(t.last('a', 'events')).toContainEqual({ type: 'forfeited', player: 'b', reason: 'left' });
+  });
+
   it('keeps a leaving player seated during a game', () => {
     const t = withGame({ a: ['3C'], b: ['3D'], c: ['3S'] }, ['5H']);
     t.table.leave('a');
