@@ -23,6 +23,11 @@ export function eventText(e: GameEvent, who: Namer): string | null {
       return 'The played cards were shuffled into a new pile';
     case 'checked':
       return `${who(e.player)} checked!`;
+    case 'forfeited': {
+      const name = who(e.player);
+      if (e.reason === 'left') return name === 'You' ? 'You left the game' : `${name} left the game`;
+      return name === 'You' ? 'You missed 3 turns in a row and are out' : `${name} missed 3 turns in a row and is out`;
+    }
     case 'tossResolved':
       if (e.outcome === 'toss') return `${who(e.player)} tossed 15. Toss again!`;
       return `${who(e.player)} tossed ${e.total} and ${e.outcome === 'survived' ? 'stays in' : 'is out'}`;

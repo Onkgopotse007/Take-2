@@ -113,11 +113,45 @@ describe('Starting play', () => {
     }
   });
 
-  it('lets a K start with 3+ players but not with 2', () => {
+  it('lets a K start with 3+ players (it is ordinary then)', () => {
     const three = race({ a: ['KH', '3C', '4C', '6C'], b: ['3D', '4D', '6D', '9D'], c: ['3S', '4S', '6S', '9S'] });
     expect(top(ok(three, play('a', 'KH')))).toBe('KH');
-    const two = race({ a: ['KH', '3C', '4C', '6C'], b: ['3D', '4D', '6D', '9H'] });
-    rejects(two, play('a', 'KH'), 'NOT_A_STARTING_CARD');
+  });
+
+  describe('one against one, an action card can start', () => {
+    const duel = (aHand: string[]) =>
+      table({ hands: { a: aHand, b: ['3D', '4D', '6D', '9D'] }, discard: ['5H'], turn: { kind: 'race' }, direction: null });
+
+    it('a 7, J or K starts and the starter plays again', () => {
+      for (const card of ['7H', 'JH', 'KH']) {
+        const s = ok(duel([card, '3C']), play('a', card));
+        expect(top(s)).toBe(card);
+        expect(turnOf(s)).toBe('a');
+      }
+    });
+
+    it('a 2 starts and the other player faces a pick of 2', () => {
+      const s = ok(duel(['2H', '3C']), play('a', '2H'));
+      expect(s.penalty).toBe(2);
+      expect(turnOf(s)).toBe('b');
+    });
+
+    it('an 8 starts on any base and names a suit', () => {
+      rejects(duel(['8C', '3C']), play('a', '8C'), 'SUIT_REQUIRED');
+      const s = ok(duel(['8C', '3C']), play('a', '8C', { suit: 'spades' }));
+      expect(s.lead.suits).toEqual(['spades']);
+      expect(turnOf(s)).toBe('b');
+    });
+
+    it('an Ace or a Joker of the base colour starts', () => {
+      expect(top(ok(duel(['AH', '3C']), play('a', 'AH')))).toBe('AH');
+      expect(top(ok(duel(['JKR', '3C']), play('a', 'JKR')))).toBe('JKR');
+    });
+
+    it('still has to match the base', () => {
+      rejects(duel(['7C', 'JKB']), play('a', '7C'), 'NOT_A_STARTING_CARD');
+      rejects(duel(['7C', 'JKB']), play('a', 'JKB'), 'NOT_A_STARTING_CARD');
+    });
   });
 
   it('accepts only the first valid play received', () => {
@@ -421,17 +455,22 @@ describe('Stacking and blocking', () => {
     rejects(facing(2, ['2H'], ['3H', '3C']), play('a', '3H'), 'CARD_NOT_PLAYABLE');
   });
 
-  it('after an Ace block, requires the suit of the Ace', () => {
+  it('after an Ace block, requires the suit of the Ace, or another Ace to change the suit', () => {
     const s = ok(facing(2, ['2H'], ['AS', '3C']), play('a', 'AS'));
     expect(turnOf(s)).toBe('b');
     const next = table({
-      hands: { a: ['3C'], b: ['3S', '5H', 'JKB'], c: ['4D'] },
+      hands: { a: ['3C'], b: ['3S', '5H', 'AD', 'JKB'], c: ['4D', '6D'] },
       discard: ['2H', 'AS'],
       lead: s.lead,
       turn: { kind: 'player', player: 'b' },
     });
     rejects(next, play('b', '5H'), 'CARD_NOT_PLAYABLE');
+    rejects(next, play('b', 'JKB'), 'CARD_NOT_PLAYABLE');
     expect(top(ok(next, play('b', '3S')))).toBe('3S');
+    // An Ace on the Ace changes the suit to diamonds.
+    const changed = ok(next, play('b', 'AD'));
+    expect(changed.lead.suits).toEqual(['diamonds']);
+    expect(top(ok(changed, play('c', '4D')))).toBe('4D');
   });
 
   it('after a taken stack topped by a 2, requires that suit or another 2', () => {
@@ -688,6 +727,57 @@ describe('Running out of cards', () => {
     const s = ok(table({ hands: { a: ['3C'], b: ['3D'], c: ['3S'] }, discard: ['5H'], drawPile: [] }), pick('a'));
     expect(hand(s, 'a')).toEqual(['3C']);
     expect(turnOf(s)).toBe('b');
+  });
+});
+
+describe('Forfeits', () => {
+  const forfeit = (player: string, reason: 'left' | 'missedTurns' = 'missedTurns') => ({ type: 'forfeit' as const, player, reason });
+
+  it('removes the player, puts their cards under the pile and passes their turn on', () => {
+    const s0 = table({ hands: { a: ['3C', '4C'], b: ['3D'], c: ['3S'] }, discard: ['5H'], drawPile: ['QC'] });
+    const { state, events } = okWithEvents(s0, forfeit('a'));
+    expect(events).toContainEqual({ type: 'forfeited', player: 'a', reason: 'missedTurns' });
+    expect(state.players.find((p) => p.id === 'a')!.status).toBe('eliminated');
+    expect(state.drawPile.map((c) => c.id)).toEqual(['3C', '4C', 'QC']);
+    expect(turnOf(state)).toBe('b');
+  });
+
+  it('leaves the turn alone when it was not theirs', () => {
+    const s = ok(table({ hands: { a: ['6H', '3C'], b: ['3D'], c: ['3S'], d: ['4S'] }, discard: ['5H'] }), forfeit('c', 'left'));
+    expect(turnOf(s)).toBe('a');
+    expect(turnOf(ok(s, play('a', '6H')))).toBe('b');
+  });
+
+  it('lets a pending penalty lapse when the player facing it forfeits', () => {
+    const s = ok(table({ hands: { a: ['3C'], b: ['3D', '4D'], c: ['3S'] }, discard: ['2H'], penalty: 2 }), forfeit('a'));
+    expect(s.penalty).toBe(0);
+    expect(turnOf(s)).toBe('b');
+    expect(s.lead).toEqual({ suits: ['hearts'], colours: [], ranks: ['2'] });
+  });
+
+  it('ends the game when only one player is left', () => {
+    const s = ok(table({ hands: { a: ['3C'], b: ['3D'] }, discard: ['5H'] }), forfeit('a', 'left'));
+    expect(s.phase).toBe('gameOver');
+    expect(s.winner).toBe('b');
+  });
+
+  it('hands the start to the other neighbour if one leaves before acting', () => {
+    const s0 = table({ hands: { a: ['3C'], b: ['3D'], c: ['3S'], d: ['4S'] }, discard: ['5H'], turn: { kind: 'neighbours', starter: 'a' }, direction: null });
+    const s = ok(s0, forfeit('b'));
+    expect(turnOf(s)).toBe('d');
+    expect(s.direction).toBe(-1);
+  });
+
+  it('counts as out for a player who was tossing', () => {
+    const s0 = ok(table({ hands: { a: ['6H'], b: ['10D', '5S'], c: ['3S'] }, discard: ['5H'] }), play('a', '6H'));
+    expect(s0.phase).toBe('toss');
+    const s = ok(s0, forfeit('b'));
+    expect(s.roundResult!.outcomes.b).toBe('eliminated');
+    expect(s.phase).toBe('roundOver');
+  });
+
+  it('cannot remove someone already out', () => {
+    rejects(table({ hands: { a: ['3C'], b: ['3D'], c: ['3S'] }, discard: ['5H'], eliminated: ['c'] }), forfeit('c'), 'NOT_IN_GAME');
   });
 });
 

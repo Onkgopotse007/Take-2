@@ -27,6 +27,7 @@ else console.log(result.code, result.reason);
 | `callOut { target }` | anyone else | Target picks 2. |
 | `toss { picks: [i, j] }` | tossing player | Two indices of the 4 face-down cards. |
 | `nextRound` | server | After `roundOver`. |
+| `forfeit { player, reason }` | server | The player is out for good (`left` or `missedTurns`). |
 | `forceStart` | server | When the start timer runs out during the starting race. A random player picks one card (and may play or keep it if valid), then a random neighbour of theirs plays next. |
 
 ## Interpretations of the rules

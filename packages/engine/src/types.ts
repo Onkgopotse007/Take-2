@@ -84,7 +84,11 @@ export type Move =
   | { type: 'toss'; player: PlayerId; picks: [number, number] }
   | { type: 'nextRound' }
   /** Server move when nobody starts in time: a random player picks, a random neighbour plays next. */
-  | { type: 'forceStart' };
+  | { type: 'forceStart' }
+  /** Server move: the player leaves the game for good. */
+  | { type: 'forfeit'; player: PlayerId; reason: ForfeitReason };
+
+export type ForfeitReason = 'left' | 'missedTurns';
 
 export type PickReason = 'turn' | 'penalty' | 'callOut' | 'onAir' | 'forcedStart';
 
@@ -101,6 +105,7 @@ export type GameEvent =
   | { type: 'checked'; player: PlayerId }
   | { type: 'tossResolved'; player: PlayerId; total: number; outcome: 'survived' | 'eliminated' | 'toss' }
   | { type: 'eliminated'; player: PlayerId }
+  | { type: 'forfeited'; player: PlayerId; reason: ForfeitReason }
   | { type: 'gameOver'; winner: PlayerId };
 
 export type RejectionCode =

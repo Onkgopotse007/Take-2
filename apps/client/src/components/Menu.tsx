@@ -16,7 +16,7 @@ export function Menu({ code, onClose, onLeave }: { code: string; onClose(): void
         {note && <p>{note}</p>}
         {confirming ? (
           <>
-            <p>Leave this table? You will lose your seat in the game.</p>
+            <p>Leave this table? Leaving during a game counts as forfeiting it.</p>
             <button type="button" className="btn btn-primary" onClick={onLeave}>
               Yes, leave
             </button>

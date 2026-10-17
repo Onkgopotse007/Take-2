@@ -33,7 +33,7 @@ export const DEFAULT_TIMINGS: Timings = {
   raceTieWindowMs: 150,
   startTimeoutMs: 15_000,
   turnTimeoutMs: 10_000,
-  disconnectedTurnMs: 5_000,
+  disconnectedTurnMs: 10_000,
   tossTimeoutMs: 20_000,
   roundBreakMs: 10_000,
 };
@@ -71,6 +71,9 @@ const REASONS: Partial<Record<ServerRejectionCode, string>> = {
 };
 
 const NAME_MAX = 20;
+/** Timed-out turns in a row before a player forfeits. */
+export const MISSED_TURNS_LIMIT = 3;
+const KEY_ALPHABET = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
  * One game table: lobby, the authoritative engine state, timers and the start race.
@@ -92,6 +95,10 @@ export class Table {
   private timer: Timer | null = null;
   private raceCandidates: { player: string; move: Move }[] | null = null;
   private raceTimer: Timer | null = null;
+  /** Secret per seat, so a player can get back into their seat even if their session is gone. */
+  private keys = new Map<string, string>();
+  /** Timed-out turns in a row, per player. */
+  private missed = new Map<string, number>();
 
   constructor(options: TableOptions) {
     this.code = options.code;
@@ -116,20 +123,45 @@ export class Table {
     if (this.status === 'playing') return rejection('GAME_IN_PROGRESS');
     if (this.seats.length >= MAX_PLAYERS) return rejection('TABLE_FULL');
     this.seats.push({ id, name: cleanName(rawName, this.seats.length + 1), connected: true });
+    this.keys.set(id, this.newKey());
     this.hostId ??= id;
     this.broadcastSnapshots();
     return null;
   }
 
-  /** A player left for good (or their reconnection window ran out). */
-  leave(id: string): void {
+  /**
+   * Returns the player whose seat `seatKey` opens, and marks them connected again. This works even
+   * after their session has expired, so nobody is locked out of their own game.
+   */
+  reclaim(seatKey: unknown): string | null {
+    if (typeof seatKey !== 'string' || !seatKey) return null;
+    for (const [id, key] of this.keys) {
+      if (key === seatKey && this.seat(id)) {
+        this.setConnected(id, true);
+        return id;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * A player's session ended. If they chose to leave mid-game they forfeit; if their connection
+   * simply ran out, their seat stays and their turns time out until they come back.
+   */
+  leave(id: string, chose = false): void {
     const seat = this.seat(id);
     if (!seat) return;
     if (this.status === 'playing') {
-      // Their seat stays in the game; their turns are played automatically.
       seat.connected = false;
+      const stillIn = this.game?.players.some((p) => p.id === id && p.status === 'active');
+      if (chose && stillIn) {
+        this.reassignHostIfNeeded();
+        this.apply({ type: 'forfeit', player: id, reason: 'left' });
+        return;
+      }
     } else {
       this.seats = this.seats.filter((s) => s.id !== id);
+      this.keys.delete(id);
     }
     this.reassignHostIfNeeded();
     this.reschedule();
@@ -150,7 +182,9 @@ export class Table {
     if (id !== this.hostId) return this.reject(id, 'NOT_HOST');
     // Anyone who left after a finished game gives up their seat for the rematch.
     this.seats = this.seats.filter((s) => s.connected);
+    for (const key of [...this.keys.keys()]) if (!this.seat(key)) this.keys.delete(key);
     if (this.seats.length < MIN_PLAYERS) return this.reject(id, 'NOT_ENOUGH_PLAYERS');
+    this.missed.clear();
     this.game = createGame(
       this.seats.map((s) => s.id),
       this.rng,
@@ -171,7 +205,7 @@ export class Table {
       this.racePlay(id, move);
       return;
     }
-    this.apply(move);
+    if (this.apply(move)) this.missed.delete(id);
   }
 
   /** Sends one player a fresh snapshot, e.g. after they register handlers or reconnect. */
@@ -199,6 +233,7 @@ export class Table {
       you: id,
       hostId: this.hostId,
       seats: this.seats.map((s) => ({ ...s })),
+      seatKey: this.keys.get(id) ?? null,
       status: this.status,
       game: this.game ? getPlayerView(this.game, id) : null,
       raceOpensAt: this.raceOpensAt,
@@ -225,6 +260,7 @@ export class Table {
     }
     this.raceCandidates = this.raceCandidates.filter((c) => c.player !== id);
     this.raceCandidates.push({ player: id, move });
+    this.missed.delete(id);
   }
 
   private resolveRace(): void {
@@ -237,12 +273,12 @@ export class Table {
     this.apply(winner.move);
   }
 
-  private apply(move: Move): void {
-    if (!this.game) return;
+  private apply(move: Move): boolean {
+    if (!this.game) return false;
     const result = applyMove(this.game, move, this.rng);
     if (!result.ok) {
       if ('player' in move) this.outbox.send(move.player, 'rejected', { code: result.code, reason: result.reason });
-      return;
+      return false;
     }
     const wasPlaying = this.status === 'playing';
     this.game = result.state;
@@ -253,6 +289,7 @@ export class Table {
     this.reschedule();
     this.broadcastSnapshots();
     if (wasPlaying && (this.status as TableStatus) === 'finished') this.onStatusChange('finished');
+    return true;
   }
 
   /** Sets the one timer that keeps the game moving when players do not act. */
@@ -310,11 +347,27 @@ export class Table {
     }
   }
 
-  /** Out of time: keep a picked card, otherwise pick (which takes any pending penalty). */
+  /**
+   * Out of time: keep a picked card, otherwise pick (which takes any pending penalty).
+   * The third timed-out turn in a row forfeits the game.
+   */
   private autoTurn(player: string): void {
     const g = this.game;
     if (!g || g.turn.kind !== 'player' || g.turn.player !== player) return;
+    const missed = (this.missed.get(player) ?? 0) + 1;
+    if (missed >= MISSED_TURNS_LIMIT) {
+      this.missed.delete(player);
+      this.apply({ type: 'forfeit', player, reason: 'missedTurns' });
+      return;
+    }
+    this.missed.set(player, missed);
     this.apply(g.pickedCardId ? { type: 'pass', player } : { type: 'pick', player });
+  }
+
+  private newKey(): string {
+    let key = '';
+    for (let i = 0; i < 24; i++) key += KEY_ALPHABET[randomInt(this.rng, KEY_ALPHABET.length)];
+    return key;
   }
 
   private clearTimer(): void {

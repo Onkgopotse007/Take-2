@@ -29,6 +29,11 @@ function assertCardsConserved(s: GameState): void {
 
 function chooseMove(s: GameState, agent: Rng): Move | undefined {
   if (s.phase === 'roundOver') return { type: 'nextRound' };
+  // Now and then someone walks away from the table.
+  if (agent.next() < 0.002) {
+    const active = s.players.filter((p) => p.status === 'active');
+    return { type: 'forfeit', player: active[randomInt(agent, active.length)]!.id, reason: 'left' };
+  }
   const all = s.players.flatMap((p) => getLegalMoves(s, p.id));
   // The server's start timer: fires when nobody can start, and sometimes when nobody does.
   if (s.turn.kind === 'race' && (all.length === 0 || agent.next() < 0.1)) return { type: 'forceStart' };
