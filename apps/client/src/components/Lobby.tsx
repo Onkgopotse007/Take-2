@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { TableSnapshot } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
+import { HowToList } from './HowTo';
 
 export function Lobby({ snapshot, onStart, onLeave }: { snapshot: TableSnapshot; onStart(): void; onLeave(): void }) {
   const [note, setNote] = useState('');
@@ -37,6 +38,11 @@ export function Lobby({ snapshot, onStart, onLeave }: { snapshot: TableSnapshot;
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="tips-card" aria-labelledby="lobby-howto">
+        <h2 id="lobby-howto">How to play here</h2>
+        <HowToList />
       </section>
 
       <div className="field" style={{ marginTop: 'auto' }}>
