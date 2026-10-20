@@ -41,6 +41,7 @@ spec:
             limits: { memory: 512Mi }
           securityContext:
             runAsNonRoot: true
+            runAsUser: 1000 # the image's "node" user
             allowPrivilegeEscalation: false
 ---
 apiVersion: v1
