@@ -54,7 +54,10 @@ describe('Hand', () => {
     setup();
     expect(screen.queryByText('Tap to play')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: '9 of hearts' }));
-    expect(screen.getByText('Tap to play')).toBeInTheDocument();
+    const tag = screen.getByText('Tap to play');
+    // The tag must not be part of a card, or it could catch taps meant for the card next to it.
+    expect(tag.closest('button')).toBeNull();
+    expect(screen.getByRole('button', { name: '9 of hearts' }).className).toBe('hand-card selected');
   });
 
   it('lifts a just-picked card straight away, so one tap plays it', async () => {

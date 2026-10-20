@@ -132,8 +132,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 .hand-card.playable { transform: translateY(-6px); }
 .hand-card.selected { transform: translateY(-28px); }
 .hand-card.selected .card { border-color: var(--lamp); }
-.hand-card.selected { z-index: 2; }
-.play-tag { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap; background: var(--lamp); color: var(--ink); font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
+.play-tag { position: absolute; bottom: calc(72px * 1.42 + 34px); transform: translateX(-50%); z-index: 3; pointer-events: none; white-space: nowrap; background: var(--lamp); color: var(--ink); font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
 .hand-empty { text-align: center; color: var(--muted); padding: 32px 0; }
 .status-line { margin: 0; min-height: 22px; text-align: center; font-size: 15px; color: var(--muted); }
 
