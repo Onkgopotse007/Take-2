@@ -25,7 +25,7 @@ It builds `take2-server` and `take2-web` for linux/arm64 on this Mac, copies the
 
 Both must allow TCP 80 and 443 before the game is reachable from outside:
 
-- **VM iptables:** ACCEPT rules for 80 and 443 inserted before the final REJECT, saved with `sudo netfilter-persistent save`.
+- **VM iptables (done):** ACCEPT rules for 80 and 443 sit before the final REJECT, both live and in `/etc/iptables/rules.v4`. Do not use `netfilter-persistent save`: it would also save k3s's live KUBE-* rules and restore stale ones on reboot. Edit `rules.v4` directly.
 - **Oracle console:** ingress rules for TCP 80 and 443 on the security list of VCN `instapula-uk` (source `0.0.0.0/0`).
 
 ## Useful commands
