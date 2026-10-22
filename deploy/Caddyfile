@@ -1,0 +1,25 @@
+# SITE_ADDRESS is ":80" until there is a domain. Set it to the domain (e.g. "take2.example.com")
+# and Caddy fetches and renews HTTPS certificates by itself.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# Game server: matchmaking and WebSockets. The client always talks to /api.
+	handle_path /api/* {
+		reverse_proxy {$UPSTREAM:take2-server:2567}
+	}
+
+	# Hashed build files never change.
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else is the app shell; table links like /K7MPX load it too.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

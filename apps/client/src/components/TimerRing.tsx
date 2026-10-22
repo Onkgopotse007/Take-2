@@ -1,7 +1,9 @@
 const R = 15;
 const C = 2 * Math.PI * R;
 
-export function TimerRing({ seconds, total }: { seconds: number; total: number }) {
+export function TimerRing({ seconds: raw, total }: { seconds: number; total: number }) {
+  // Network delay can make the clock correction overshoot; never show more than the full turn.
+  const seconds = Math.min(raw, total);
   const fraction = Math.max(0, Math.min(1, seconds / total));
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" role="img" aria-label={`${seconds} seconds left`}>

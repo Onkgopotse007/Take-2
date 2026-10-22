@@ -17,6 +17,8 @@ import { TimerRing } from './TimerRing';
 
 const TOAST_MS = 3500;
 const SPEECH_MS = 2500;
+/** Matches the server's turn limit. */
+const TURN_SECONDS = 10;
 
 export function Table({ session, snapshot, onLeave }: { session: TableSession; snapshot: TableSnapshot; onLeave(): void }) {
   const view = snapshot.game!;
@@ -161,7 +163,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             top={positions[i]!.top}
             compact={opponents.length > 6}
             isTurn={turnIds.has(p.id)}
-            secondsLeft={secs}
+            secondsLeft={secs === null ? null : Math.min(secs, TURN_SECONDS)}
             speech={speech.get(p.id) ?? null}
             canCallOut={view.phase === 'playing' && !meOut && p.status === 'active'}
             onCallOut={(target) => session.move({ type: 'callOut', target })}
@@ -172,7 +174,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
       <section className={`hand-area${myTurn ? ' my-turn' : ''}`} aria-label="Your hand">
         <div className="hand-bar">
           <div className={`hand-status${myTurn ? ' mine' : ''}`}>
-            {myTurn && secs !== null && <TimerRing seconds={secs} total={10} />}
+            {myTurn && secs !== null && <TimerRing seconds={secs} total={TURN_SECONDS} />}
             <span>{status}</span>
             {speech.get(me) && <span className="chip-note" style={{ fontSize: 13 }}>{speech.get(me)}</span>}
           </div>

@@ -47,6 +47,7 @@ export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = 
   if (cards.length === 0) return <p className="hand-empty">No cards in hand</p>;
 
   const step = cardStep(cards.length, width, CARD_W);
+  const selectedIndex = cards.findIndex((c) => c.id === selected);
   const total = CARD_W + step * (cards.length - 1);
 
   const tap = (card: Card) => {
@@ -79,15 +80,16 @@ export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = 
               aria-pressed={isSelected}
               onClick={() => tap(card)}
             >
-              {isSelected && (
-                <span className="play-tag" aria-hidden="true">
-                  Tap to play
-                </span>
-              )}
               <CardFace card={card} />
             </button>
           );
         })}
+        {selectedIndex >= 0 && (
+          // Outside the card buttons and ignoring taps, so a lifted card never covers its neighbours.
+          <span className="play-tag" aria-hidden="true" style={{ left: selectedIndex * step + CARD_W / 2 }}>
+            Tap to play
+          </span>
+        )}
       </div>
     </div>
   );

@@ -130,5 +130,5 @@ This is the source of truth for the engine.
 - Build `linux/arm64` images on the owner's Mac (Apple Silicon, so native arm64). Initially ship without a registry: `docker save <image> | ssh -i ~/.ssh/instapula_uk ubuntu@140.238.81.209 sudo k3s ctr images import -`. Move to GHCR later.
 
 ### Firewall (must be opened before the game is reachable)
-- VM iptables currently rejects everything except SSH (final REJECT rule). Insert ACCEPT rules for TCP 80 and 443 **before** the REJECT rule, then persist them with `sudo netfilter-persistent save`.
+- VM iptables: ACCEPT rules for TCP 80 and 443 sit before the final REJECT rule, both live and in `/etc/iptables/rules.v4` (done 2026-10-20; backup `rules.v4.bak-take2-*`). **Never run `sudo netfilter-persistent save`**: it would write k3s's live KUBE-* rules into the saved file and restore stale ones on reboot, breaking cluster networking for every project. Edit `rules.v4` directly instead.
 - Oracle console: add ingress rules for TCP 80 and 443 to the security list of VCN `instapula-uk`.
