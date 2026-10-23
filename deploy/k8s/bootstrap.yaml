@@ -1,0 +1,48 @@
+# One-off admin setup, applied by hand: the namespace, and the account automatic releases use.
+# That account can only read deployments in take2 and change them (to roll out new image tags).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: take2
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: take2-deployer
+  namespace: take2
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: take2-deployer-token
+  namespace: take2
+  annotations:
+    kubernetes.io/service-account.name: take2-deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: take2-deployer
+  namespace: take2
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, patch]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: take2-deployer
+  namespace: take2
+subjects:
+  - kind: ServiceAccount
+    name: take2-deployer
+    namespace: take2
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: take2-deployer

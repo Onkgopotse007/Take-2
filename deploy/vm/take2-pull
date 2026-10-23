@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run as root via sudo by take2-release. Only ever pulls the two public take2 images.
+set -euo pipefail
+sha="${1:-}"
+[[ "$sha" =~ ^[0-9a-f]{7,40}$ ]] || { echo "usage: take2-pull <git sha>" >&2; exit 2; }
+for image in take2-server take2-web; do
+  k3s crictl pull "ghcr.io/onkgopotse007/$image:$sha" >/dev/null
+  echo "pulled $image:$sha"
+done

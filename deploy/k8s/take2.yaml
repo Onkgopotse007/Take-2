@@ -1,10 +1,6 @@
 # Everything for Take 2 lives in the take2 namespace. Nothing here touches other namespaces.
-# IMAGE_TAG is replaced by deploy/deploy.sh.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: take2
----
+# IMAGE_TAG is replaced by deploy/deploy.sh. Day-to-day releases only change the image tags
+# (see .github/workflows/deploy.yml); apply this file again only when the setup itself changes.
 # Game server. Exactly one replica: tables live in its memory.
 apiVersion: apps/v1
 kind: Deployment
@@ -23,8 +19,8 @@ spec:
     spec:
       containers:
         - name: server
-          image: take2-server:IMAGE_TAG
-          imagePullPolicy: Never
+          image: ghcr.io/onkgopotse007/take2-server:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
           env:
             - { name: PORT, value: "2567" }
           ports:
@@ -84,8 +80,8 @@ spec:
     spec:
       containers:
         - name: caddy
-          image: take2-web:IMAGE_TAG
-          imagePullPolicy: Never
+          image: ghcr.io/onkgopotse007/take2-web:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
           env:
             # Becomes the domain name once there is one; Caddy then serves HTTPS on 443.
             - { name: SITE_ADDRESS, value: ":80" }
