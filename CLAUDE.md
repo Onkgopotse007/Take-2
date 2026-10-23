@@ -127,7 +127,9 @@ This is the source of truth for the engine.
 ### Plan
 - All game resources live in namespace `take2`.
 - A Caddy Deployment with `hostPort` 80 and 443 fronts the game: serves the client files and proxies WebSocket traffic to the server Service. Once a domain exists, Caddy handles HTTPS certificates automatically.
-- Build `linux/arm64` images on the owner's Mac (Apple Silicon, so native arm64). Initially ship without a registry: `docker save <image> | ssh -i ~/.ssh/instapula_uk ubuntu@140.238.81.209 sudo k3s ctr images import -`. Move to GHCR later.
+- **`development` is live.** Every merge to it runs `.github/workflows/deploy.yml`: CI, then arm64 images built on GitHub's ARM runners and pushed to `ghcr.io/onkgopotse007/take2-{server,web}:<commit>` (public packages), then a release through the `production` environment. Releases end games in progress.
+- Releases log in to the VM as `take2-deploy`, whose key is forced to run `take2-release <sha>`: it pulls both images first (one sudo-allowed command), then patches the take2 deployments via the `take2-deployer` service account (read and patch deployments in `take2` only). See `deploy/README.md`.
+- `deploy/deploy.sh` is the admin path from the owner's Mac (build, `docker save | k3s ctr images import`, apply manifests). Use it when the Kubernetes setup changes.
 
 ### Firewall (must be opened before the game is reachable)
 - VM iptables: ACCEPT rules for TCP 80 and 443 sit before the final REJECT rule, both live and in `/etc/iptables/rules.v4` (done 2026-10-20; backup `rules.v4.bak-take2-*`). **Never run `sudo netfilter-persistent save`**: it would write k3s's live KUBE-* rules into the saved file and restore stale ones on reboot, breaking cluster networking for every project. Edit `rules.v4` directly instead.
