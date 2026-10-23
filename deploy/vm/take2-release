@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# The only command the take2-deploy SSH key may run (see authorized_keys "command=").
+# Usage over SSH: release <git sha>
+# Pulls both images first, so a failed download never takes the game down, then rolls out.
+set -euo pipefail
+
+read -r action sha extra <<<"${SSH_ORIGINAL_COMMAND:-}"
+if [[ "${action:-}" != release || -n "${extra:-}" || ! "${sha:-}" =~ ^[0-9a-f]{7,40}$ ]]; then
+  echo "usage: release <git sha>" >&2
+  exit 2
+fi
+
+sudo /usr/local/bin/take2-pull "$sha"
+
+export KUBECONFIG="$HOME/.kube/config" K3S_CONFIG_FILE=/dev/null
+kubectl -n take2 set image deploy/take2-server "server=ghcr.io/onkgopotse007/take2-server:$sha"
+kubectl -n take2 set image deploy/take2-web "caddy=ghcr.io/onkgopotse007/take2-web:$sha"
+kubectl -n take2 rollout status deploy/take2-server --timeout=300s
+kubectl -n take2 rollout status deploy/take2-web --timeout=180s
+echo "Released $sha"
