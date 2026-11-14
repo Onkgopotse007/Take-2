@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { cardFromId } from '@take2/engine';
+import { CardFace } from '../src/components/Card';
+import { DirectionArrows } from '../src/components/DirectionArrows';
 import { Hand } from '../src/components/Hand';
 import { Seat } from '../src/components/Seat';
 import { SuitSheet } from '../src/components/SuitSheet';
@@ -154,5 +156,29 @@ describe('Round end screens', () => {
     rerender(<ResultsSheet view={view as never} who={who} secondsLeft={null} isHost={false} hostName="Neo" onPlayAgain={onPlayAgain} onLeave={() => {}} />);
     expect(screen.queryByRole('button', { name: 'Play again' })).toBeNull();
     expect(screen.getByText('Waiting for Neo to start a new game.')).toBeInTheDocument();
+  });
+});
+
+describe('Card faces', () => {
+  it('shows the suit under the number in the corner, the part still visible in a crowded hand', () => {
+    const { container } = render(<CardFace card={cardFromId('7S')} />);
+    const index = container.querySelector('.index')!;
+    expect(index.querySelector('.rank')!.textContent).toBe('7');
+    expect(index.querySelector('.suit')!.textContent).toContain('♠');
+  });
+
+  it('marks a Joker in the corner too', () => {
+    const { container } = render(<CardFace card={cardFromId('JKR')} />);
+    expect(container.querySelector('.index svg')).not.toBeNull();
+  });
+});
+
+describe('DirectionArrows', () => {
+  it('says which way play goes, and draws four arrows', () => {
+    const { container, rerender } = render(<DirectionArrows direction={1} />);
+    expect(screen.getByRole('img', { name: 'Play goes clockwise' })).toBeInTheDocument();
+    expect(container.querySelectorAll('path[marker-end]')).toHaveLength(4);
+    rerender(<DirectionArrows direction={-1} />);
+    expect(screen.getByRole('img', { name: 'Play goes anticlockwise' })).toBeInTheDocument();
   });
 });

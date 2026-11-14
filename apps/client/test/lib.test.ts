@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cardFromId, leadFromCard, type PlayerView } from '@take2/engine';
 import { playableIds, sortHand } from '../src/lib/cards';
-import { cardStep, opponentsFromMyLeft, seatAngles, seatPositions } from '../src/lib/layout';
+import { cardStep, directionArcs, opponentsFromMyLeft, seatAngles, seatPositions } from '../src/lib/layout';
 import { CODE_PATTERN, normaliseCode } from '../src/lib/prefs';
 
 const ids = (cards: { id: string }[]) => cards.map((c) => c.id);
@@ -89,6 +89,27 @@ describe('seats', () => {
     expect(cardStep(4, 360, 72)).toBe(78);
     expect(cardStep(8, 360, 72)).toBeCloseTo(288 / 7);
     expect(cardStep(30, 360, 72)).toBe(26);
+  });
+});
+
+describe('directionArcs', () => {
+  it('draws four arcs that sweep clockwise for +1 and anticlockwise for -1', () => {
+    const cw = directionArcs(360, 420, 1);
+    const acw = directionArcs(360, 420, -1);
+    expect(cw).toHaveLength(4);
+    for (const d of cw) expect(d).toMatch(/ 0 0 1 [\d.]+ [\d.]+$/);
+    for (const d of acw) expect(d).toMatch(/ 0 0 0 [\d.]+ [\d.]+$/);
+  });
+
+  it('keeps the arrows inside the table', () => {
+    for (const d of directionArcs(360, 420, 1)) {
+      const nums = d.match(/[\d.]+/g)!.map(Number);
+      const [x0, y0] = nums;
+      expect(x0).toBeGreaterThan(360 * 0.13);
+      expect(x0).toBeLessThan(360 * 0.87);
+      expect(y0).toBeGreaterThan(420 * 0.13);
+      expect(y0).toBeLessThan(420 * 0.91);
+    }
   });
 });
 

@@ -7,6 +7,7 @@ import { announcement, eventText, makeNamer } from '../lib/feed';
 import { opponentsFromMyLeft, seatPositions } from '../lib/layout';
 import type { TableSession } from '../net/session';
 import { CardBack, CardFace } from './Card';
+import { DirectionArrows } from './DirectionArrows';
 import { Hand } from './Hand';
 import { Menu } from './Menu';
 import { ResultsSheet } from './ResultsSheet';
@@ -95,6 +96,8 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
 
   const pileReady = myTurn && !view.pickedCardId;
   const pileLabel = pileReady ? (view.penalty > 0 ? `Tap to take ${view.penalty}` : 'Tap to pick') : `${view.drawPileCount} left`;
+  // Direction is unknown until a neighbour acts after the start, and means nothing one against one.
+  const showDirection = view.phase === 'playing' && view.direction !== null && view.players.filter((p) => p.status === 'active').length > 2;
   const onAir = !meOut && view.phase === 'playing' && hand.length === 0;
 
   return (
@@ -115,6 +118,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
       <section className="table-area" aria-label="Table">
         <div className="table-rim" aria-hidden="true" />
         <div className="table-wood" aria-hidden="true" />
+        {showDirection && view.direction !== null && <DirectionArrows direction={view.direction} />}
         <div className="table-centre">
           {countdown !== null ? (
             <span className="countdown" role="timer" aria-live="assertive">

@@ -14,6 +14,10 @@ export function CardFace({ card, width, style }: { card: Card; width?: number; s
   if (card.kind === 'joker') {
     return (
       <span className={`card joker${red}`} style={vars} aria-hidden="true">
+        {/* Corner star, so a Joker is recognisable from the edge of an overlapping hand. */}
+        <span className="index">
+          <Star size={Math.round((width ?? 72) * 0.2)} />
+        </span>
         <Star size={Math.round((width ?? 72) * 0.42)} />
         <span className="word">JOKER</span>
       </span>
@@ -22,7 +26,11 @@ export function CardFace({ card, width, style }: { card: Card; width?: number; s
   const glyph = SUIT_GLYPH[card.suit];
   return (
     <span className={`card${red}`} style={vars} aria-hidden="true">
-      <span className="rank">{card.rank}</span>
+      {/* Number with the suit under it, as on real cards: all that shows of a card in a crowded hand. */}
+      <span className="index">
+        <span className={`rank${card.rank === '10' ? ' ten' : ''}`}>{card.rank}</span>
+        <span className="suit">{glyph}</span>
+      </span>
       <span className="pip">{glyph}</span>
       <span className="corner">{glyph}</span>
     </span>

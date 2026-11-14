@@ -41,3 +41,25 @@ export function initials(name: string): string {
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
   return name.trim().slice(0, 2).toUpperCase();
 }
+
+/**
+ * Four short arcs just inside the table edge, between the seats, pointing the way play goes.
+ * Matches .table-rim (13% in from the sides and top, 9% from the bottom) and its 10px wood inset.
+ * Direction +1 runs from me to my left, over the top, to my right: clockwise on screen.
+ */
+export function directionArcs(width: number, height: number, direction: 1 | -1): string[] {
+  const inset = 10 + 20;
+  const cx = width / 2;
+  const cy = height * 0.52;
+  const rx = width * 0.37 - inset;
+  const ry = height * 0.39 - inset;
+  const point = (deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(cx + rx * Math.cos(a)).toFixed(1)} ${(cy + ry * Math.sin(a)).toFixed(1)}`;
+  };
+  return [45, 135, 225, 315].map((centre) => {
+    const [from, to] = direction === 1 ? [centre - 18, centre + 18] : [centre + 18, centre - 18];
+    const sweep = direction === 1 ? 1 : 0;
+    return `M ${point(from)} A ${rx.toFixed(1)} ${ry.toFixed(1)} 0 0 ${sweep} ${point(to)}`;
+  });
+}
