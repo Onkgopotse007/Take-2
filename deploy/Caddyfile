@@ -30,7 +30,7 @@
 # as there is no certificate for it. Certificate challenges are answered before these routes.
 http:// {
 	# Kubernetes' readiness probe, addressed to the pod's own IP (pods are 10.42.x.x on k3s).
-	@probe header_regexp Host ^10\.42\.
+	@probe expression {host}.startsWith("10.42.")
 	respond @probe "ok" 200
 
 	@site host {$DOMAIN:take2.code-crunchers.com}
