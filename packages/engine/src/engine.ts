@@ -15,6 +15,8 @@ import { type Rng, randomInt, shuffle } from './rng';
 import type {
   ForfeitReason,
   GameEvent,
+  GameMode,
+  GameOptions,
   GameState,
   Lead,
   Move,
@@ -30,6 +32,28 @@ export const MAX_PLAYERS = 10;
 export const HAND_SIZE = 4;
 export const TOSS_LAYOUT_SIZE = 4;
 export const SURVIVAL_LIMIT = 15;
+/** Mma T's rules: the highest score that survives. Anything above is out, and there is no toss. */
+export const MMA_T_LIMIT = 16;
+
+interface Rules {
+  jokers: boolean;
+  /** Any last card checks, action cards included (so nobody is ever on air). */
+  anyCardChecks: boolean;
+  /** Highest score that survives outright. */
+  maxSurvivingPoints: number;
+  /** Scoring exactly SURVIVAL_LIMIT means a toss. */
+  toss: boolean;
+}
+
+export const RULES: Record<GameMode, Rules> = {
+  classic: { jokers: true, anyCardChecks: false, maxSurvivingPoints: SURVIVAL_LIMIT - 1, toss: true },
+  mmaT: { jokers: false, anyCardChecks: true, maxSurvivingPoints: MMA_T_LIMIT, toss: false },
+};
+
+/** True if playing `card` as a player's last card ends the round. */
+export function checksWith(mode: GameMode, card: Card): boolean {
+  return RULES[mode].anyCardChecks || isPlainCard(card);
+}
 
 const REASONS: Record<RejectionCode, string> = {
   NOT_IN_GAME: 'You are not playing in this game.',
@@ -53,7 +77,7 @@ type Events = GameEvent[];
 // ---------------------------------------------------------------------------
 
 /** Creates a game and deals the first round. Players are seated in the order given. */
-export function createGame(playerIds: readonly PlayerId[], rng: Rng): GameState {
+export function createGame(playerIds: readonly PlayerId[], rng: Rng, options: GameOptions = {}): GameState {
   if (playerIds.length < MIN_PLAYERS || playerIds.length > MAX_PLAYERS) {
     throw new RangeError(`A game needs ${MIN_PLAYERS} to ${MAX_PLAYERS} players, got ${playerIds.length}.`);
   }
@@ -61,6 +85,7 @@ export function createGame(playerIds: readonly PlayerId[], rng: Rng): GameState 
     throw new Error('Player ids must be unique.');
   }
   const state: GameState = {
+    mode: options.mode ?? 'classic',
     players: playerIds.map((id) => ({ id, hand: [], status: 'active', callable: false })),
     phase: 'playing',
     round: 0,
@@ -74,6 +99,8 @@ export function createGame(playerIds: readonly PlayerId[], rng: Rng): GameState 
     tossLayouts: {},
     roundResult: null,
     winner: null,
+    contender: null,
+    voided: false,
   };
   dealRound(state, rng, []);
   return state;
@@ -216,7 +243,9 @@ function play(
   const card = p.hand[idx]!;
   if (s.pickedCardId && card.id !== s.pickedCardId) return 'ONLY_PICKED_CARD';
   if (!canPlayCard(s, card)) return 'CARD_NOT_PLAYABLE';
-  const isEight = isRank(card, '8');
+  const checks = p.hand.length === 1 && checksWith(s.mode, card);
+  // A checking 8 ends the round, so there is no next suit to name.
+  const isEight = isRank(card, '8') && !checks;
   if (isEight && (!suit || !SUITS.includes(suit))) return 'SUIT_REQUIRED';
 
   claimTurn(s, p.id, ev);
@@ -231,7 +260,7 @@ function play(
     if (announce) ev.push({ type: 'announced', player: p.id, cardsLeft: left });
   }
 
-  if (left === 0 && isPlainCard(card)) {
+  if (checks) {
     endRound(s, p.id, rng, ev);
     return null;
   }
@@ -388,6 +417,14 @@ function forfeit(s: GameState, p: PlayerState, reason: ForfeitReason, ev: Events
   if (s.phase === 'gameOver') return 'WRONG_PHASE';
   ev.push({ type: 'forfeited', player: p.id, reason });
 
+  if (s.contender === p.id) {
+    // Mma T's rules: the only player who could win has gone, so nobody wins.
+    p.status = 'eliminated';
+    p.callable = false;
+    voidGame(s, p.id, null, ev);
+    return null;
+  }
+
   if (s.phase === 'toss' || s.phase === 'roundOver') {
     if (s.phase === 'toss') {
       delete s.tossLayouts[p.id];
@@ -450,7 +487,7 @@ function eliminate(s: GameState, p: PlayerState, ev: Events): void {
 function dealRound(s: GameState, rng: Rng, ev: Events): void {
   const players = activePlayers(s);
   for (;;) {
-    const pile = shuffle(createDeck(), rng);
+    const pile = shuffle(createDeck(RULES[s.mode].jokers), rng);
     const hands = players.map(() => [] as Card[]);
     for (let r = 0; r < HAND_SIZE; r++) for (const hand of hands) hand.push(pile.pop()!);
     const base = turnBase(pile);
@@ -493,7 +530,11 @@ function endRound(s: GameState, checker: PlayerId, rng: Rng, ev: Events): void {
   s.penalty = 0;
   for (const p of s.players) p.callable = false;
 
+  const rules = RULES[s.mode];
   const others = activePlayers(s).filter((p) => p.id !== checker);
+  // Mma T's rules: once someone has checked, a check by anyone else voids the game.
+  const voiding = s.mode === 'mmaT' && s.contender !== null && s.contender !== checker;
+  if (s.mode === 'mmaT') s.contender ??= checker;
   const result: RoundResult = {
     round: s.round,
     checker,
@@ -504,7 +545,7 @@ function endRound(s: GameState, checker: PlayerId, rng: Rng, ev: Events): void {
   };
   s.roundResult = result;
 
-  if (others.length === 1) {
+  if (others.length === 1 && !voiding) {
     // With two players left the checker wins outright.
     const other = others[0]!;
     result.hands[other.id] = other.hand.slice();
@@ -524,13 +565,19 @@ function endRound(s: GameState, checker: PlayerId, rng: Rng, ev: Events): void {
     const points = handPoints(p.hand);
     result.hands[p.id] = p.hand.slice();
     result.points[p.id] = points;
-    if (points === SURVIVAL_LIMIT) {
+    if (rules.toss && points === SURVIVAL_LIMIT) {
       result.outcomes[p.id] = 'toss';
       result.tosses[p.id] = [];
       s.tossLayouts[p.id] = createTossLayout(rng);
     } else {
-      result.outcomes[p.id] = points < SURVIVAL_LIMIT ? 'survived' : 'eliminated';
+      result.outcomes[p.id] = points <= rules.maxSurvivingPoints ? 'survived' : 'eliminated';
     }
+  }
+
+  if (voiding) {
+    // The hands are still revealed, but nobody is eliminated: the game simply ends.
+    voidGame(s, s.contender!, checker, ev);
+    return;
   }
 
   if (Object.keys(s.tossLayouts).length > 0) s.phase = 'toss';
@@ -553,6 +600,18 @@ function finaliseRound(s: GameState, ev: Events): void {
   } else {
     s.phase = 'roundOver';
   }
+}
+
+/** Mma T's rules: the game ends with no winner. */
+function voidGame(s: GameState, contender: PlayerId, checker: PlayerId | null, ev: Events): void {
+  s.phase = 'gameOver';
+  s.turn = { kind: 'none' };
+  s.penalty = 0;
+  s.pickedCardId = null;
+  s.tossLayouts = {};
+  s.winner = null;
+  s.voided = true;
+  ev.push({ type: 'gameVoided', contender, checker });
 }
 
 // ---------------------------------------------------------------------------

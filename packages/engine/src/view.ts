@@ -1,5 +1,5 @@
 import { SUITS, type Card, isRank } from './cards';
-import { canPlayCard, canStartOn, activePlayers, playersToAct, topCard, TOSS_LAYOUT_SIZE } from './engine';
+import { canPlayCard, canStartOn, checksWith, activePlayers, playersToAct, topCard, TOSS_LAYOUT_SIZE } from './engine';
 import type { GameState, Lead, Move, PlayerId, RoundResult, Turn } from './types';
 
 export interface PublicPlayer {
@@ -14,6 +14,7 @@ export interface PublicPlayer {
  * does who can be called out: players have to notice a missing announcement themselves.
  */
 export interface PlayerView {
+  mode: GameState['mode'];
   me: PlayerId;
   hand: Card[];
   players: PublicPlayer[];
@@ -33,12 +34,15 @@ export interface PlayerView {
   tossing: PlayerId[];
   roundResult: RoundResult | null;
   winner: PlayerId | null;
+  contender: PlayerId | null;
+  voided: boolean;
 }
 
 export function getPlayerView(state: GameState, me: PlayerId): PlayerView {
   const self = state.players.find((p) => p.id === me);
   const isMyTurn = state.turn.kind === 'player' && state.turn.player === me;
   return {
+    mode: state.mode,
     me,
     hand: self ? self.hand.slice() : [],
     players: state.players.map((p) => ({
@@ -61,6 +65,8 @@ export function getPlayerView(state: GameState, me: PlayerId): PlayerView {
     tossing: Object.keys(state.tossLayouts),
     roundResult: state.roundResult,
     winner: state.winner,
+    contender: state.contender,
+    voided: state.voided,
   };
 }
 
@@ -80,8 +86,9 @@ export function getLegalMoves(state: GameState, player: PlayerId): Move[] {
   }
   if (state.phase !== 'playing') return moves;
 
+  // An 8 names the next suit, unless it is a last card that ends the round.
   const playMoves = (card: Card): Move[] =>
-    isRank(card, '8')
+    isRank(card, '8') && !(self.hand.length === 1 && checksWith(state.mode, card))
       ? SUITS.map((suit) => ({ type: 'play', player, cardId: card.id, suit }) as Move)
       : [{ type: 'play', player, cardId: card.id }];
 

@@ -112,6 +112,16 @@ This is the source of truth for the engine.
 - When the draw pile is empty, shuffle the played cards except the top base card into a new draw pile.
 - If there still aren't enough cards for a pick, the player picks whatever is available and play continues.
 
+## Game modes
+
+The host picks the rules in the lobby, or on the results sheet before a rematch. **Classic** is the rules specification above. **Mma T's house rules** (the owner's mother's) change only what is listed here:
+
+- **No Jokers.** One 52-card deck. 2s are the only penalty cards (blocked by an Ace, stacked with a 2).
+- **Any card can check.** A player's last card ends the round whatever it is, action cards and K included, so nobody is ever on air. A last 8 checks on any card and names no suit, but still cannot be played against an unblocked 2.
+- **Scoring.** 16 or less survives, 17 or more is eliminated. There is no toss.
+- **Winning.** The first player to check in a game is the only one who can win it. They must keep checking each round until every other player is eliminated (with 2 players left, their check wins, as in classic). If anyone else checks first, the game is void: no winner, nobody is eliminated, and the host starts a new game. If that player leaves, the game is also void. Anyone else leaving is out as usual.
+- The table shows who is going for the win, and keeps a tally of wins for as long as it stays open (void games count for nobody; the tally also runs for classic games).
+
 ## Deployment
 
 ### VM

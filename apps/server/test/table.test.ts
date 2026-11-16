@@ -51,6 +51,7 @@ function withGame(hands: Record<string, string[]>, discard: string[], extra: Par
   for (const id of Object.keys(hands)) t.table.join(id, id);
   const top = cardFromId(discard.at(-1)!);
   const state: GameState = {
+    mode: 'classic',
     players: Object.entries(hands).map(([id, h]) => ({ id, hand: h.map(cardFromId), status: 'active', callable: false })),
     phase: 'playing',
     round: 1,
@@ -64,6 +65,8 @@ function withGame(hands: Record<string, string[]>, discard: string[], extra: Par
     tossLayouts: {},
     roundResult: null,
     winner: null,
+    contender: null,
+    voided: false,
     ...extra,
   };
   t.table.loadState(state, extra.turn?.kind === 'race' ? t.clock.now() + T.countdownMs : null);
@@ -334,5 +337,48 @@ describe('Leaving and rematches', () => {
     expect(snap.seats.map((s) => s.id)).toEqual(['a', 'b']);
     expect(snap.game!.round).toBe(1);
     expect(snap.game!.players.map((p) => p.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe("Mma T's house rules", () => {
+  it('lets only the host choose the rules, and only between games', () => {
+    const t = setup();
+    t.table.join('a', 'A');
+    t.table.join('b', 'B');
+    expect(t.last('b', 'table')!.mode).toBe('classic');
+    t.table.setMode('b', { mode: 'mmaT' });
+    expect(t.rejected('b')).toBe('NOT_HOST');
+    t.table.setMode('a', { mode: 'poker' });
+    expect(t.rejected('a')).toBe('BAD_MESSAGE');
+    t.table.setMode('a', { mode: 'mmaT' });
+    expect(t.last('b', 'table')!.mode).toBe('mmaT');
+    t.table.start('a');
+    expect(t.last('b', 'table')!.game!.mode).toBe('mmaT');
+    t.table.setMode('a', { mode: 'classic' });
+    expect(t.rejected('a')).toBe('GAME_IN_PROGRESS');
+  });
+
+  it('counts wins per player, and a void game for nobody', () => {
+    const t = withGame({ a: ['6H'], b: ['JKR'], c: ['8S', '8C'] }, ['5H']);
+    expect(t.last('b', 'table')!.wins).toEqual({});
+    t.table.move('a', { type: 'play', cardId: '6H' });
+    expect(t.last('b', 'table')!.wins).toEqual({ a: 1 });
+
+    t.table.loadState({
+      ...structuredClone(t.table['game']!),
+      mode: 'mmaT',
+      phase: 'playing',
+      winner: null,
+      contender: 'a',
+      players: ['a', 'b', 'c'].map((id) => ({ id, hand: [cardFromId(id === 'b' ? '6H' : '3C')], status: 'active', callable: false })),
+      turn: { kind: 'player', player: 'b' },
+      discard: [cardFromId('5H')],
+      lead: leadFromCard(cardFromId('5H')),
+    });
+    t.table.move('b', { type: 'play', cardId: '6H' });
+    const snap = t.last('a', 'table')!;
+    expect(snap.status).toBe('finished');
+    expect(snap.game!.voided).toBe(true);
+    expect(snap.wins).toEqual({ a: 1 });
   });
 });

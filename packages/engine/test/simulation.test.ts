@@ -7,6 +7,7 @@ import {
   getLegalMoves,
   getPlayerView,
   randomInt,
+  type GameMode,
   type GameState,
   type Move,
   type Rng,
@@ -15,16 +16,17 @@ import {
 const MAX_MOVES = 50_000;
 
 interface Outcome {
-  winner: string;
+  winner: string | null;
   moves: number;
   rounds: number;
 }
 
 function assertCardsConserved(s: GameState): void {
   if (s.phase !== 'playing') return;
+  const deckSize = s.mode === 'classic' ? 54 : 52;
   const ids = [...s.drawPile, ...s.discard, ...s.players.filter((p) => p.status === 'active').flatMap((p) => p.hand)].map((c) => c.id);
-  expect(ids).toHaveLength(54);
-  expect(new Set(ids).size).toBe(54);
+  expect(ids).toHaveLength(deckSize);
+  expect(new Set(ids).size).toBe(deckSize);
 }
 
 function chooseMove(s: GameState, agent: Rng): Move | undefined {
@@ -47,12 +49,13 @@ function chooseMove(s: GameState, agent: Rng): Move | undefined {
   return move.type === 'play' ? { ...move, announce: agent.next() < 0.8 } : move;
 }
 
-function simulate(players: number, seed: number): Outcome {
+function simulate(players: number, seed: number, mode: GameMode = 'classic'): Outcome {
   const rng = createSeededRng(seed);
   const agent = createSeededRng(seed ^ 0x9e3779b9);
   let s = createGame(
     Array.from({ length: players }, (_, i) => `p${i + 1}`),
     rng,
+    { mode },
   );
   let moves = 0;
   while (s.phase !== 'gameOver') {
@@ -69,14 +72,28 @@ function simulate(players: number, seed: number): Outcome {
     expect(view.hand).toEqual(viewer.hand);
     expect(JSON.stringify(view)).not.toContain('"drawPile"');
   }
-  expect(s.players.filter((p) => p.status === 'active').map((p) => p.id)).toEqual([s.winner]);
-  return { winner: s.winner!, moves, rounds: s.round };
+  if (s.voided) {
+    expect(s.winner).toBeNull();
+    expect(s.contender).not.toBeNull();
+  } else {
+    expect(s.players.filter((p) => p.status === 'active').map((p) => p.id)).toEqual([s.winner]);
+    // Mma T's rules: only the first checker can win (unless everyone else left before anyone checked).
+    if (s.mode === 'mmaT' && s.contender) expect(s.winner).toBe(s.contender);
+  }
+  return { winner: s.winner, moves, rounds: s.round };
 }
 
 describe('Simulated games', () => {
   for (let players = 2; players <= 10; players++) {
     it(`finish with a single winner (${players} players, 40 seeds)`, () => {
       for (let seed = 1; seed <= 40; seed++) simulate(players, seed * 7919 + players);
+    });
+  }
+
+  for (let players = 2; players <= 10; players++) {
+    it(`finish with a single winner or a void game under Mma T's rules (${players} players, 30 seeds)`, () => {
+      const results = Array.from({ length: 30 }, (_, i) => simulate(players, (i + 1) * 104_729 + players, 'mmaT'));
+      expect(results.every((r) => r.rounds >= 1)).toBe(true);
     });
   }
 

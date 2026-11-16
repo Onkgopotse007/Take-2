@@ -55,15 +55,15 @@ export function cardFromId(id: string): Card {
   return { id, kind: 'suited', suit, rank };
 }
 
-/** A full 54-card deck: 52 cards plus a red and a black Joker. */
-export function createDeck(): Card[] {
+/** A full 54-card deck: 52 cards plus a red and a black Joker (or just the 52 without them). */
+export function createDeck(jokers = true): Card[] {
   const deck: Card[] = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
       deck.push({ id: cardId({ kind: 'suited', suit, rank }), kind: 'suited', suit, rank });
     }
   }
-  deck.push(cardFromId('JKR'), cardFromId('JKB'));
+  if (jokers) deck.push(cardFromId('JKR'), cardFromId('JKB'));
   return deck;
 }
 

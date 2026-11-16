@@ -1,10 +1,19 @@
 import { useState } from 'react';
+import type { GameMode } from '@take2/engine';
 import type { TableSnapshot } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
 import { HowToList } from './HowTo';
+import { MmaTNote, MmaTRulesList, RulesPicker } from './Rules';
 
-export function Lobby({ snapshot, onStart, onLeave }: { snapshot: TableSnapshot; onStart(): void; onLeave(): void }) {
+interface Props {
+  snapshot: TableSnapshot;
+  onStart(): void;
+  onSetMode(mode: GameMode): void;
+  onLeave(): void;
+}
+
+export function Lobby({ snapshot, onStart, onSetMode, onLeave }: Props) {
   const [note, setNote] = useState('');
   const isHost = snapshot.hostId === snapshot.you;
   const host = snapshot.seats.find((s) => s.id === snapshot.hostId);
@@ -39,6 +48,21 @@ export function Lobby({ snapshot, onStart, onLeave }: { snapshot: TableSnapshot;
           ))}
         </ul>
       </section>
+
+      <section className="field" aria-labelledby="lobby-rules">
+        <h2 id="lobby-rules" style={{ margin: 0, fontSize: 18 }}>
+          Rules
+        </h2>
+        <RulesPicker mode={snapshot.mode} isHost={isHost} onChange={onSetMode} />
+      </section>
+
+      {snapshot.mode === 'mmaT' && (
+        <section className="tips-card" aria-labelledby="lobby-mma-t">
+          <h2 id="lobby-mma-t">Mma T's house rules</h2>
+          <MmaTNote />
+          <MmaTRulesList />
+        </section>
+      )}
 
       <section className="tips-card" aria-labelledby="lobby-howto">
         <h2 id="lobby-howto">How to play here</h2>

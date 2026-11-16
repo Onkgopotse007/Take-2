@@ -9,6 +9,7 @@ import { Seat } from '../src/components/Seat';
 import { SuitSheet } from '../src/components/SuitSheet';
 import { TossSheet } from '../src/components/TossSheet';
 import { ResultsSheet } from '../src/components/ResultsSheet';
+import { RulesPicker } from '../src/components/Rules';
 
 afterEach(cleanup);
 
@@ -133,7 +134,8 @@ describe('Round end screens', () => {
       tosses: { a: [] },
     },
   } as const;
-  const who = (id: string) => ({ a: 'You', b: 'Neo', c: 'Kago' })[id] ?? id;
+  const who = (id: string, asObject = false) => ({ a: asObject ? 'you' : 'You', b: 'Neo', c: 'Kago' })[id] ?? id;
+  const rules = { mode: 'classic' as const, onSetMode: () => {}, tally: [] };
 
   it('lets a tossing player pick two face-down cards', async () => {
     const onToss = vi.fn();
@@ -148,14 +150,40 @@ describe('Round end screens', () => {
     const onPlayAgain = vi.fn();
     const view = { ...base, phase: 'gameOver', winner: 'b', roundResult: { ...base.roundResult, outcomes: { b: 'checked', a: 'eliminated', c: 'eliminated' } } };
     const { rerender } = render(
-      <ResultsSheet view={view as never} who={who} secondsLeft={null} isHost hostName="You" onPlayAgain={onPlayAgain} onLeave={() => {}} />,
+      <ResultsSheet view={view as never} who={who} secondsLeft={null} isHost hostName="You" onPlayAgain={onPlayAgain} onLeave={() => {}} {...rules} />,
     );
     expect(screen.getByRole('heading', { name: 'Neo wins!' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Play again' }));
     expect(onPlayAgain).toHaveBeenCalled();
-    rerender(<ResultsSheet view={view as never} who={who} secondsLeft={null} isHost={false} hostName="Neo" onPlayAgain={onPlayAgain} onLeave={() => {}} />);
+    rerender(<ResultsSheet view={view as never} who={who} secondsLeft={null} isHost={false} hostName="Neo" onPlayAgain={onPlayAgain} onLeave={() => {}} {...rules} />);
     expect(screen.queryByRole('button', { name: 'Play again' })).toBeNull();
     expect(screen.getByText('Waiting for Neo to start a new game.')).toBeInTheDocument();
+  });
+
+  it("says nobody wins a void game under Mma T's rules, and keeps the tally", () => {
+    const view = {
+      ...base,
+      mode: 'mmaT',
+      phase: 'gameOver',
+      winner: null,
+      voided: true,
+      contender: 'a',
+      roundResult: { ...base.roundResult, outcomes: { b: 'checked', a: 'eliminated', c: 'survived' } },
+    };
+    render(
+      <ResultsSheet view={view as never} who={who} secondsLeft={null} isHost hostName="You" onPlayAgain={() => {}} onLeave={() => {}} {...rules} tally={[{ id: 'b', wins: 2 }]} />,
+    );
+    expect(screen.getByRole('heading', { name: 'Nobody wins' })).toBeInTheDocument();
+    expect(screen.getByText('Neo checked before you could put everyone out.')).toBeInTheDocument();
+    // Nobody is out in a void game: points only.
+    expect(screen.queryByText(/^Out/)).toBeNull();
+    expect(screen.getByLabelText('Wins at this table')).toHaveTextContent('Neo2');
+  });
+
+  it('tells everyone who is going for the win between rounds', () => {
+    const view = { ...base, mode: 'mmaT', phase: 'roundOver', contender: 'b', voided: false };
+    render(<ResultsSheet view={view as never} who={who} secondsLeft={5} isHost hostName="You" onPlayAgain={() => {}} onLeave={() => {}} {...rules} />);
+    expect(screen.getByText(/Neo is going for the win/)).toBeInTheDocument();
   });
 });
 
@@ -180,5 +208,32 @@ describe('DirectionArrows', () => {
     expect(container.querySelectorAll('path[marker-end]')).toHaveLength(4);
     rerender(<DirectionArrows direction={-1} />);
     expect(screen.getByRole('img', { name: 'Play goes anticlockwise' })).toBeInTheDocument();
+  });
+});
+
+describe('Rules', () => {
+  it('lets the host choose the rules', async () => {
+    const onChange = vi.fn();
+    render(<RulesPicker mode="classic" isHost onChange={onChange} />);
+    expect(screen.getByRole('radio', { name: /Classic/ })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(screen.getByRole('radio', { name: /Mma T's house rules/ }));
+    expect(onChange).toHaveBeenCalledWith('mmaT');
+  });
+
+  it('only shows the rules to everyone else', () => {
+    render(<RulesPicker mode="mmaT" isHost={false} onChange={() => {}} />);
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.getByText("Mma T's house rules")).toBeInTheDocument();
+  });
+
+  it('plays a last 8 straight away when it ends the round', async () => {
+    const onPlay = vi.fn();
+    const onEight = vi.fn();
+    render(<Hand cards={[cardFromId('8C')]} playable={new Set(['8C'])} onPlay={onPlay} onEight={onEight} onStatus={() => {}} eightNeedsSuit={false} />);
+    const eight = screen.getByRole('button', { name: '8 of clubs' });
+    await userEvent.click(eight);
+    await userEvent.click(eight);
+    expect(onPlay).toHaveBeenCalledWith('8C');
+    expect(onEight).not.toHaveBeenCalled();
   });
 });

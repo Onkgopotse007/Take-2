@@ -162,6 +162,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
               connected: connected.get(p.id) ?? false,
               eliminated: p.status === 'eliminated',
               onAir: p.onAir,
+              contender: view.contender === p.id && !view.voided,
             }}
             left={positions[i]!.left}
             top={positions[i]!.top}
@@ -180,6 +181,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
           <div className={`hand-status${myTurn ? ' mine' : ''}`}>
             {myTurn && secs !== null && <TimerRing seconds={secs} total={TURN_SECONDS} />}
             <span>{status}</span>
+            {view.contender === me && view.phase === 'playing' && <span className="seat-tag win">for the win</span>}
             {speech.get(me) && <span className="chip-note" style={{ fontSize: 13 }}>{speech.get(me)}</span>}
           </div>
           {!meOut && view.phase === 'playing' && (
@@ -207,6 +209,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             onEight={setEightId}
             onStatus={setHint}
             autoSelect={myTurn ? view.pickedCardId : null}
+            eightNeedsSuit={!(view.mode === 'mmaT' && hand.length === 1)}
           />
         )}
         <p className="status-line" role="status">
@@ -233,9 +236,15 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
           hostName={snapshot.hostId ? who(snapshot.hostId) : 'the host'}
           onPlayAgain={session.start}
           onLeave={onLeave}
+          mode={snapshot.mode}
+          onSetMode={session.setMode}
+          tally={Object.entries(snapshot.wins)
+            .map(([id, wins]) => ({ id, wins }))
+            .filter((t) => names.has(t.id))
+            .sort((a, b) => b.wins - a.wins)}
         />
       )}
-      {menuOpen && <Menu code={snapshot.code} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
+      {menuOpen && <Menu code={snapshot.code} mode={view.mode} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
     </>
   );
 }

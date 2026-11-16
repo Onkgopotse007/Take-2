@@ -24,10 +24,14 @@ export function ResultsList({ view, who }: { view: PlayerView; who: Namer }) {
           <li key={id}>
             <div className="top">
               <span className="who">{who(id)}</span>
-              <span className={`verdict${outcome === 'eliminated' ? ' out' : ''}`}>
-                {VERDICT[outcome]}
-                {result.points[id] !== undefined && `, ${result.points[id]} points`}
-              </span>
+              {view.voided && outcome !== 'checked' ? (
+                <span className="verdict">{result.points[id]} points</span>
+              ) : (
+                <span className={`verdict${outcome === 'eliminated' ? ' out' : ''}`}>
+                  {VERDICT[outcome]}
+                  {result.points[id] !== undefined && `, ${result.points[id]} points`}
+                </span>
+              )}
             </div>
             {result.hands[id] && result.hands[id]!.length > 0 && (
               <div className="mini-cards" aria-label={`${who(id)}'s cards`}>

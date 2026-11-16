@@ -6,6 +6,7 @@ import {
   createSeededRng,
   leadFromCard,
   type GameEvent,
+  type GameMode,
   type GameState,
   type Lead,
   type Move,
@@ -28,14 +29,18 @@ export interface TableSpec {
   penalty?: number;
   eliminated?: string[];
   callable?: string[];
+  mode?: GameMode;
+  contender?: string;
 }
 
 export function table(spec: TableSpec): GameState {
   const used = new Set([...Object.values(spec.hands).flat(), ...spec.discard]);
-  const drawPile = spec.drawPile ?? createDeck().map((c) => c.id).filter((id) => !used.has(id));
+  const mode = spec.mode ?? 'classic';
+  const drawPile = spec.drawPile ?? createDeck(mode === 'classic').map((c) => c.id).filter((id) => !used.has(id));
   const ids = Object.keys(spec.hands);
   const top = cardFromId(spec.discard[spec.discard.length - 1]!);
   return {
+    mode,
     players: ids.map((id) => ({
       id,
       hand: spec.hands[id]!.map(cardFromId),
@@ -54,6 +59,8 @@ export function table(spec: TableSpec): GameState {
     tossLayouts: {},
     roundResult: null,
     winner: null,
+    contender: spec.contender ?? null,
+    voided: false,
   };
 }
 
