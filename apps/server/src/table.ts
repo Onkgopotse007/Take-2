@@ -7,6 +7,7 @@ import {
   neighbours,
   randomInt,
   type GameEvent,
+  type GameMode,
   type GameState,
   type Move,
   type Rng,
@@ -64,7 +65,7 @@ const REASONS: Partial<Record<ServerRejectionCode, string>> = {
   BAD_MESSAGE: 'That message was not understood.',
   TOO_EARLY: 'Wait for the countdown to finish.',
   BEATEN_TO_IT: 'Someone else started first.',
-  NOT_HOST: 'Only the host can start the game.',
+  NOT_HOST: 'Only the host can do that.',
   NOT_ENOUGH_PLAYERS: `At least ${MIN_PLAYERS} players are needed.`,
   GAME_IN_PROGRESS: 'A game is already in progress at this table.',
   TABLE_FULL: `This table is full (${MAX_PLAYERS} players).`,
@@ -99,6 +100,8 @@ export class Table {
   private keys = new Map<string, string>();
   /** Timed-out turns in a row, per player. */
   private missed = new Map<string, number>();
+  private mode: GameMode = 'classic';
+  private wins = new Map<string, number>();
 
   constructor(options: TableOptions) {
     this.code = options.code;
@@ -188,10 +191,21 @@ export class Table {
     this.game = createGame(
       this.seats.map((s) => s.id),
       this.rng,
+      { mode: this.mode },
     );
     this.raceOpensAt = this.scheduler.now() + this.timings.countdownMs;
     this.onStatusChange('playing');
     this.reschedule();
+    this.broadcastSnapshots();
+  }
+
+  /** Host only, between games. */
+  setMode(id: string, raw: unknown): void {
+    const mode = (raw as { mode?: unknown } | null)?.mode;
+    if (mode !== 'classic' && mode !== 'mmaT') return this.reject(id, 'BAD_MESSAGE');
+    if (this.status === 'playing') return this.reject(id, 'GAME_IN_PROGRESS');
+    if (id !== this.hostId) return this.reject(id, 'NOT_HOST');
+    this.mode = mode;
     this.broadcastSnapshots();
   }
 
@@ -235,6 +249,8 @@ export class Table {
       seats: this.seats.map((s) => ({ ...s })),
       seatKey: this.keys.get(id) ?? null,
       status: this.status,
+      mode: this.mode,
+      wins: Object.fromEntries(this.wins),
       game: this.game ? getPlayerView(this.game, id) : null,
       raceOpensAt: this.raceOpensAt,
       deadline: this.deadline,
@@ -282,13 +298,15 @@ export class Table {
     }
     const wasPlaying = this.status === 'playing';
     this.game = result.state;
+    const finished = wasPlaying && (this.status as TableStatus) === 'finished';
+    if (finished && this.game.winner) this.wins.set(this.game.winner, (this.wins.get(this.game.winner) ?? 0) + 1);
     if (result.events.some((e) => e.type === 'roundStarted')) {
       this.raceOpensAt = this.scheduler.now() + this.timings.countdownMs;
     }
     this.broadcastEvents(result.events);
     this.reschedule();
     this.broadcastSnapshots();
-    if (wasPlaying && (this.status as TableStatus) === 'finished') this.onStatusChange('finished');
+    if (finished) this.onStatusChange('finished');
     return true;
   }
 

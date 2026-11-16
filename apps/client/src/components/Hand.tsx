@@ -16,10 +16,12 @@ interface Props {
   onStatus(text: string): void;
   /** A card to lift straight away, e.g. the one just picked. */
   autoSelect?: string | null;
+  /** False when an 8 would end the round (Mma T's rules, last card), so there is no suit to name. */
+  eightNeedsSuit?: boolean;
 }
 
 /** Tap a card to lift it, tap it again to play it. */
-export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = null }: Props) {
+export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = null, eightNeedsSuit = true }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(358);
@@ -56,7 +58,7 @@ export function Hand({ cards, playable, onPlay, onEight, onStatus, autoSelect = 
       onStatus(`Tap the ${cardName(card)} again to play it`);
       return;
     }
-    if (isRank(card, '8')) {
+    if (isRank(card, '8') && eightNeedsSuit) {
       onEight(card.id);
       return;
     }

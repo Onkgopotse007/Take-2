@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client, type Room } from '@colyseus/sdk';
-import type { GameEvent } from '@take2/engine';
+import type { GameEvent, GameMode } from '@take2/engine';
 import type { ClientMove, Rejection, TableSnapshot } from '@take2/server/protocol';
 import { syncServerClock } from '../lib/clock';
 
@@ -93,6 +93,7 @@ export interface TableSession {
   feed: FeedItem[];
   rejection: RejectionItem | null;
   start(): void;
+  setMode(mode: GameMode): void;
   move(move: ClientMove): void;
   leave(): Promise<void>;
 }
@@ -183,6 +184,7 @@ export function useTableSession(code: string, name: string | null): TableSession
   }, [code, name, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = useCallback(() => roomRef.current?.send('start', {}), []);
+  const setMode = useCallback((mode: GameMode) => roomRef.current?.send('setMode', { mode }), []);
   const move = useCallback((m: ClientMove) => roomRef.current?.send('move', m), []);
   const leave = useCallback(async () => {
     leaving.current = true;
@@ -193,5 +195,5 @@ export function useTableSession(code: string, name: string | null): TableSession
     roomRef.current = null;
   }, [code]);
 
-  return { status, error, snapshot, feed, rejection, start, move, leave };
+  return { status, error, snapshot, feed, rejection, start, setMode, move, leave };
 }

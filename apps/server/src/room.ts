@@ -41,6 +41,7 @@ export class TableRoom extends Room {
       },
     });
     this.onMessage('start', (client) => this.withPlayer(client, (id) => this.table.start(id)));
+    this.onMessage('setMode', (client, message) => this.withPlayer(client, (id) => this.table.setMode(id, message)));
     this.onMessage('move', (client, message) => this.withPlayer(client, (id) => this.table.move(id, message)));
     this.onMessage('sync', (client) => this.withPlayer(client, (id) => this.table.sync(id)));
   }

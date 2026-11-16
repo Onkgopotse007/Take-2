@@ -2,6 +2,17 @@ import type { Card, Colour, Rank, Suit } from './cards';
 
 export type PlayerId = string;
 
+/**
+ * - `classic`: the rules in CLAUDE.md.
+ * - `mmaT`: Mma T's house rules. No Jokers, any last card checks, 16 or under survives with no
+ *   toss, and only the first player to check in a game can win it.
+ */
+export type GameMode = 'classic' | 'mmaT';
+
+export interface GameOptions {
+  mode?: GameMode;
+}
+
 export interface PlayerState {
   id: PlayerId;
   hand: Card[];
@@ -54,6 +65,7 @@ export interface RoundResult {
 }
 
 export interface GameState {
+  mode: GameMode;
   /** Seating order. Eliminated players stay in the list. */
   players: PlayerState[];
   phase: 'playing' | 'toss' | 'roundOver' | 'gameOver';
@@ -74,6 +86,10 @@ export interface GameState {
   tossLayouts: Record<PlayerId, Card[]>;
   roundResult: RoundResult | null;
   winner: PlayerId | null;
+  /** Mma T's rules: the first player to check this game, the only one who can win it. */
+  contender: PlayerId | null;
+  /** Mma T's rules: the game ended with no winner. */
+  voided: boolean;
 }
 
 export type Move =
@@ -106,7 +122,9 @@ export type GameEvent =
   | { type: 'tossResolved'; player: PlayerId; total: number; outcome: 'survived' | 'eliminated' | 'toss' }
   | { type: 'eliminated'; player: PlayerId }
   | { type: 'forfeited'; player: PlayerId; reason: ForfeitReason }
-  | { type: 'gameOver'; winner: PlayerId };
+  | { type: 'gameOver'; winner: PlayerId }
+  /** Mma T's rules: someone other than the contender checked (`checker`), or the contender left (`checker` null). */
+  | { type: 'gameVoided'; contender: PlayerId; checker: PlayerId | null };
 
 export type RejectionCode =
   | 'NOT_IN_GAME'

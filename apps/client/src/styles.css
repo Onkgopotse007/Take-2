@@ -115,6 +115,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 .seat.away .avatar, .seat.out .avatar { opacity: 0.5; }
 .seat-name { font-size: 14px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 .seat-tag { font-size: 11px; color: var(--muted); }
+.seat-tag.win { color: var(--lamp); font-weight: 800; }
 .backs { display: flex; height: 20px; align-items: center; }
 .back-mini { width: 13px; height: 19px; border-radius: 2px; background: var(--back); border: 1px solid var(--cream); }
 .back-mini + .back-mini { margin-left: -6px; }
@@ -187,3 +188,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--lamp); outl
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Rules choice (lobby and results sheet) */
+.rules-picker { display: flex; flex-direction: column; gap: 8px; }
+.rules-option { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--chip-line); background: transparent; color: inherit; text-align: left; font-size: 15px; }
+.rules-option span { font-size: 13px; opacity: 0.85; }
+.rules-option.on { border: 2px solid var(--lamp); background: var(--chip); }
+.sheet .rules-option { border-color: #b9a48f; color: var(--ink); }
+.sheet .rules-option.on { border-color: var(--ink); background: #efe5d6; }
+.rules-current { margin: 0; }
+.tally { display: flex; flex-direction: column; gap: 6px; }
+.tally ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tally li { display: flex; justify-content: space-between; font-size: 15px; }

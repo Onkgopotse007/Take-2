@@ -1,5 +1,5 @@
 /** Messages between the game server and clients. Import types from here in the client. */
-import type { GameEvent, Move, PlayerView, RejectionCode } from '@take2/engine';
+import type { GameEvent, GameMode, Move, PlayerView, RejectionCode } from '@take2/engine';
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -10,6 +10,8 @@ export type ClientMove = DistributiveOmit<Exclude<Move, { type: 'nextRound' } | 
 export interface ClientMessages {
   /** Host only: start the game (or a rematch once it has finished). */
   start: Record<string, never>;
+  /** Host only, between games: which rules the next game uses. */
+  setMode: { mode: GameMode };
   move: ClientMove;
   /** Ask for a fresh `table` snapshot. Send once after registering message handlers. */
   sync: Record<string, never>;
@@ -39,6 +41,10 @@ export interface TableSnapshot {
   hostId: string | null;
   seats: Seat[];
   status: TableStatus;
+  /** Rules for the next game (and the current one, which is also in `game.mode`). */
+  mode: GameMode;
+  /** Games won at this table, by player id. Void games count for nobody. */
+  wins: Record<string, number>;
   game: PlayerView | null;
   /** Server time (ms since epoch) at which starting plays open. Plays before this are refused. */
   raceOpensAt: number | null;

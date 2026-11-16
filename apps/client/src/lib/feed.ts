@@ -28,6 +28,10 @@ export function eventText(e: GameEvent, who: Namer): string | null {
       if (e.reason === 'left') return name === 'You' ? 'You left the game' : `${name} left the game`;
       return name === 'You' ? 'You missed 3 turns in a row and are out' : `${name} missed 3 turns in a row and is out`;
     }
+    case 'gameVoided':
+      return e.checker
+        ? `${who(e.checker)} checked before ${who(e.contender, true)} could finish. Nobody wins.`
+        : `${who(e.contender)} left the game. Nobody wins.`;
     case 'tossResolved':
       if (e.outcome === 'toss') return `${who(e.player)} tossed 15. Toss again!`;
       return `${who(e.player)} tossed ${e.total} and ${e.outcome === 'survived' ? 'stays in' : 'is out'}`;
