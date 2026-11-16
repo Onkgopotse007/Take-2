@@ -36,7 +36,7 @@ The game lives at **https://take2.code-crunchers.com**.
 
 - DNS is on Cloudflare: an A record `take2` → `140.238.81.209`, **DNS only** (grey cloud).
 - The domain is set in `deploy/Caddyfile`. Caddy gets and renews the certificate by itself (stored on the `take2-caddy-data` volume).
-- Every plain-HTTP request, including old `http://140.238.81.209` links, is redirected to the HTTPS site.
+- Only the name works: `http://take2.code-crunchers.com` redirects to HTTPS, and the bare IP (`http://140.238.81.209`) gets its connection closed.
 - To move to another domain, change it in the Caddyfile, `.github/workflows/deploy.yml` and `deploy/deploy.sh`, and point the new name's A record at the VM first.
 
 ## Firewall

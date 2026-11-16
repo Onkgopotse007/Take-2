@@ -89,7 +89,7 @@ spec:
             - { name: http, containerPort: 80, hostPort: 80 }
             - { name: https, containerPort: 443, hostPort: 443 }
           readinessProbe:
-            # Port 80 answers everything with a redirect to the HTTPS site, which counts as ready.
+            # Answered on port 80 for requests addressed to the pod's IP (see deploy/Caddyfile).
             httpGet: { path: /, port: http }
             periodSeconds: 10
           resources:

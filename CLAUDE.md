@@ -7,7 +7,7 @@ Use British English in all user-facing text. Do not use em-dashes in UI copy.
 ## Open decisions (defaults until the owner says otherwise)
 
 - **Repo:** new GitHub repo named `take2`.
-- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP and the bare IP redirect to the HTTPS site.
+- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP redirects to HTTPS; the bare IP no longer serves the game.
 
 ## Stack
 

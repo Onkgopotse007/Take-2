@@ -25,9 +25,16 @@
 	}
 }
 
-# Any other plain-HTTP request (the old http://140.238.81.209 links, or the domain without https)
-# goes to the domain over HTTPS. Kubernetes' readiness probe lands here too and counts the
-# redirect as healthy.
+# Plain HTTP. The game is only reachable by its name: the domain is sent to HTTPS, and anything
+# else (such as http://140.238.81.209) gets its connection closed. HTTPS by IP already fails,
+# as there is no certificate for it. Certificate challenges are answered before these routes.
 http:// {
-	redir https://{$DOMAIN:take2.code-crunchers.com}{uri} permanent
+	# Kubernetes' readiness probe, addressed to the pod's own IP (pods are 10.42.x.x on k3s).
+	@probe header_regexp Host ^10\.42\.
+	respond @probe "ok" 200
+
+	@site host {$DOMAIN:take2.code-crunchers.com}
+	redir @site https://{host}{uri} permanent
+
+	abort
 }
