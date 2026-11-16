@@ -50,7 +50,7 @@ spec:
   ports:
     - { name: http, port: 2567, targetPort: http }
 ---
-# Caddy keeps its HTTPS certificates here once there is a domain.
+# Caddy keeps its HTTPS certificates here.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -83,13 +83,13 @@ spec:
           image: ghcr.io/onkgopotse007/take2-web:IMAGE_TAG
           imagePullPolicy: IfNotPresent
           env:
-            # Becomes the domain name once there is one; Caddy then serves HTTPS on 443.
-            - { name: SITE_ADDRESS, value: ":80" }
+            # The domain is set in deploy/Caddyfile (DOMAIN overrides it).
             - { name: UPSTREAM, value: "take2-server.take2.svc.cluster.local:2567" }
           ports:
             - { name: http, containerPort: 80, hostPort: 80 }
             - { name: https, containerPort: 443, hostPort: 443 }
           readinessProbe:
+            # Answered on port 80 for requests addressed to the pod's IP (see deploy/Caddyfile).
             httpGet: { path: /, port: http }
             periodSeconds: 10
           resources:

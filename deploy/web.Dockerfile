@@ -14,4 +14,6 @@ RUN pnpm --filter @take2/client build
 
 FROM caddy:2-alpine
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
+# A broken Caddyfile fails the build here instead of taking the site down on release.
+RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 COPY --from=build /repo/apps/client/dist /srv
