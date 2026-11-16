@@ -35,7 +35,7 @@ jobs:
         run: |
           set -x
           # The domain over plain HTTP is sent to HTTPS, keeping the path.
-          test "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: localhost' http://127.0.0.1:8080/K7MPX)" = '308 https://localhost/K7MPX'
+          test "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: localhost' http://127.0.0.1:8080/K7MPX)" = '301 https://localhost/K7MPX'
           # The bare IP gets nothing.
           if curl -s -H 'Host: 140.238.81.209' http://127.0.0.1:8080/; then echo 'The bare IP still answers'; exit 1; fi
           # Kubernetes' probe, addressed to the pod IP, is answered.
