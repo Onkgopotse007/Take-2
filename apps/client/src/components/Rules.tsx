@@ -31,6 +31,11 @@ export function RulesPicker({ mode, isHost, onChange }: { mode: GameMode; isHost
   );
 }
 
+/** Where Mma T's rules come from, in the creator's words. */
+export function MmaTNote() {
+  return <p className="rules-note">The way I grew up playing Take 2 with my mom and my siblings. Mma T's table, Mma T's rules.</p>;
+}
+
 /** What is different from the classic rules. */
 export function MmaTRulesList() {
   return (

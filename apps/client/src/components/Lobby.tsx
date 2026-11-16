@@ -4,7 +4,7 @@ import type { TableSnapshot } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
 import { HowToList } from './HowTo';
-import { MmaTRulesList, RulesPicker } from './Rules';
+import { MmaTNote, MmaTRulesList, RulesPicker } from './Rules';
 
 interface Props {
   snapshot: TableSnapshot;
@@ -59,6 +59,7 @@ export function Lobby({ snapshot, onStart, onSetMode, onLeave }: Props) {
       {snapshot.mode === 'mmaT' && (
         <section className="tips-card" aria-labelledby="lobby-mma-t">
           <h2 id="lobby-mma-t">Mma T's house rules</h2>
+          <MmaTNote />
           <MmaTRulesList />
         </section>
       )}

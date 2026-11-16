@@ -1,5 +1,5 @@
 import type { GameMode } from '@take2/engine';
-import { MmaTRulesList } from './Rules';
+import { MmaTNote, MmaTRulesList } from './Rules';
 
 /** How the controls work. Says nothing about strategy or who forgot to announce. */
 export function HowToList() {
@@ -48,6 +48,7 @@ export function HowToSheet({ mode, onClose }: { mode: GameMode; onClose(): void 
         {mode === 'mmaT' && (
           <>
             <h2>Mma T's house rules</h2>
+            <MmaTNote />
             <MmaTRulesList />
           </>
         )}
