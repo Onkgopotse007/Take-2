@@ -7,7 +7,7 @@ Use British English in all user-facing text. Do not use em-dashes in UI copy.
 ## Open decisions (defaults until the owner says otherwise)
 
 - **Repo:** new GitHub repo named `take2`.
-- **Domain:** none yet. Serve over plain HTTP on the VM's IP (`140.238.81.209`) until a domain is added. HTTPS, the installable PWA and AdSense all need a domain, so design for it from the start.
+- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP and the bare IP redirect to the HTTPS site.
 
 ## Stack
 
@@ -126,7 +126,7 @@ This is the source of truth for the engine.
 
 ### Plan
 - All game resources live in namespace `take2`.
-- A Caddy Deployment with `hostPort` 80 and 443 fronts the game: serves the client files and proxies WebSocket traffic to the server Service. Once a domain exists, Caddy handles HTTPS certificates automatically.
+- A Caddy Deployment with `hostPort` 80 and 443 fronts the game: serves the client files and proxies WebSocket traffic to the server Service. Caddy gets the HTTPS certificate for `take2.code-crunchers.com` itself (HTTP-01/TLS-ALPN), so the Cloudflare record must stay **DNS only**.
 - **`development` is live.** Every merge to it runs `.github/workflows/deploy.yml`: CI, then arm64 images built on GitHub's ARM runners and pushed to `ghcr.io/onkgopotse007/take2-{server,web}:<commit>` (public packages), then a release through the `production` environment. Releases end games in progress.
 - Releases log in to the VM as `take2-deploy`, whose key is forced to run `take2-release <sha>`: it pulls both images first (one sudo-allowed command), then patches the take2 deployments via the `take2-deployer` service account (read and patch deployments in `take2` only). See `deploy/README.md`.
 - `deploy/deploy.sh` is the admin path from the owner's Mac (build, `docker save | k3s ctr images import`, apply manifests). Use it when the Kubernetes setup changes.

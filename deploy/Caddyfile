@@ -1,6 +1,7 @@
-# SITE_ADDRESS is ":80" until there is a domain. Set it to the domain (e.g. "take2.example.com")
-# and Caddy fetches and renews HTTPS certificates by itself.
-{$SITE_ADDRESS::80} {
+# The game lives at https://take2.code-crunchers.com. Caddy gets and renews its certificate by
+# itself (kept on the take2-caddy-data volume). DOMAIN can be overridden, e.g. DOMAIN=localhost
+# to try the image on a laptop.
+{$DOMAIN:take2.code-crunchers.com} {
 	encode zstd gzip
 
 	# Game server: matchmaking and WebSockets. The client always talks to /api.
@@ -22,4 +23,11 @@
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+# Any other plain-HTTP request (the old http://140.238.81.209 links, or the domain without https)
+# goes to the domain over HTTPS. Kubernetes' readiness probe lands here too and counts the
+# redirect as healthy.
+http:// {
+	redir https://{$DOMAIN:take2.code-crunchers.com}{uri} permanent
 }

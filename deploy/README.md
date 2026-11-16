@@ -30,11 +30,14 @@ Releases end games in progress (tables live in the server's memory), so merge wh
 | `take2-server` | Colyseus game server, one bundled file on Node 22 | One replica only: tables live in memory, so a deploy ends games in progress. |
 | `take2-web` | Caddy with the built client | `hostPort` 80 and 443. Forwards `/api/*` (HTTP and WebSockets) to the server, serves everything else from `/srv`. |
 
-## Adding a domain later
+## Domain
 
-1. Point the domain's A record at `140.238.81.209`.
-2. In `deploy/k8s/take2.yaml`, set `SITE_ADDRESS` to the domain (for example `take2.example.com`) and redeploy.
-3. Caddy gets and renews the certificate by itself (stored on the `take2-caddy-data` volume). The installable app and AdSense then work too.
+The game lives at **https://take2.code-crunchers.com**.
+
+- DNS is on Cloudflare: an A record `take2` → `140.238.81.209`, **DNS only** (grey cloud).
+- The domain is set in `deploy/Caddyfile`. Caddy gets and renews the certificate by itself (stored on the `take2-caddy-data` volume).
+- Every plain-HTTP request, including old `http://140.238.81.209` links, is redirected to the HTTPS site.
+- To move to another domain, change it in the Caddyfile, `.github/workflows/deploy.yml` and `deploy/deploy.sh`, and point the new name's A record at the VM first.
 
 ## Firewall
 
