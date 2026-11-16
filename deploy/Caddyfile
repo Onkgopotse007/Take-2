@@ -31,10 +31,12 @@
 http:// {
 	# Kubernetes' readiness probe, addressed to the pod's own IP (pods are 10.42.x.x on k3s).
 	@probe expression {host}.startsWith("10.42.")
-	respond @probe "ok" 200
-
 	@site host {$DOMAIN:take2.code-crunchers.com}
-	redir @site https://{host}{uri} permanent
 
-	abort
+	# route keeps the order as written (Caddy would otherwise run abort before respond).
+	route {
+		respond @probe "ok" 200
+		redir @site https://{host}{uri} permanent
+		abort
+	}
 }
