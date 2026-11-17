@@ -7,7 +7,7 @@ Use British English in all user-facing text. Do not use em-dashes in UI copy.
 ## Open decisions (defaults until the owner says otherwise)
 
 - **Repo:** new GitHub repo named `take2`.
-- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP redirects to HTTPS; the bare IP no longer serves the game.
+- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP redirects to HTTPS; the bare IP no longer serves the game. The second game, Madagascar, will be at `https://madagascar.code-crunchers.com` (DNS only A record added 2026-11-17).
 
 ## Stack
 
@@ -130,6 +130,42 @@ The host picks the rules in the lobby, or on the results sheet before a rematch.
 - **Leaving.** A player who leaves or forfeits comes last; of several, the first to leave comes last of all. If only one player is left playing, they take the next place and the game ends.
 - Mma T's first-checker rule (contender and void games) does not apply.
 - Each seat shows its place once it has checked. At the end, the results show every player ranked. The first place counts in the win tally.
+
+## Madagascar (second game)
+
+A second card game in the same repo, at `https://madagascar.code-crunchers.com`, with the same table, lobby, join codes and look as Take 2. The rules engine is `packages/madagascar` (it reuses the cards and RNG from `packages/engine`). This section is the source of truth for it.
+
+The creator's note, shown with the rules: "We called it Madagascar, maybe because the spread of cards was ovalish, like the island."
+
+### Setup
+- 2 to 10 players. One 52-card deck, no Jokers. Only suits matter.
+- The deck is shuffled and spread face down in an oval. Nobody holds cards, and there is no card in the middle.
+
+### Matching
+- Playing a card of the same suit as the top of the pile takes the whole pile except the card just played, which becomes the new pile (even when the pile was a single card). Play then passes on as normal.
+- Any other card simply goes on the pile.
+
+### Phase 1: the oval
+- After the countdown, the fastest player turns any card in the oval and plays it. Either neighbour of the starter plays second, and whoever does sets the direction (one against one, the other player just goes next).
+- On their turn a player turns any face-down card of their choice and plays it, blind. Nobody can see which card is where.
+- The phase ends when the oval is empty.
+
+### Between the phases
+- Everyone with no cards shares the next place (usually 1st).
+- If fewer than 2 players still hold cards, the game ends. Otherwise phase 2 starts with the same pile, and the turn goes to whoever was next, skipping anyone who has finished.
+
+### Phase 2: hands
+- On their turn a player plays any card of their choice from their hand. The matching rule still applies.
+- Emptying your hand takes the next place. A last card that matches picks up the pile, so the player stays in.
+- The game ends when only one player still holds cards; they come last.
+
+### Deadlock
+- If the pile is a single card and every play matches it (so the pile never grows) for two full trips round the table (2 x the players still holding cards), the game ends and the players left are ranked by fewest cards, equal counts sharing a place. Any play that does not match resets the count. There is no points system.
+
+### Leaving and places
+- A player who leaves or misses 3 turns in a row comes last; of several, the first to leave comes last of all. Their cards leave the game. If only one player is left, they take the next place.
+- Shared places use competition ranking (two sharing 1st are followed by 3rd). The results show everyone ranked; everyone in first place gets a win in the table's tally.
+- Turn timer 10 seconds: on time-out a random card is turned (phase 1) or played from the hand (phase 2).
 
 ## Deployment
 
