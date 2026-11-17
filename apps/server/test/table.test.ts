@@ -67,6 +67,10 @@ function withGame(hands: Record<string, string[]>, discard: string[], extra: Par
     winner: null,
     contender: null,
     voided: false,
+    noElimination: false,
+    finished: [],
+    left: [],
+    ranking: null,
     ...extra,
   };
   t.table.loadState(state, extra.turn?.kind === 'race' ? t.clock.now() + T.countdownMs : null);
@@ -379,6 +383,42 @@ describe("Mma T's house rules", () => {
     const snap = t.last('a', 'table')!;
     expect(snap.status).toBe('finished');
     expect(snap.game!.voided).toBe(true);
+    expect(snap.wins).toEqual({ a: 1 });
+  });
+});
+
+describe('No elimination', () => {
+  it('is a switch the host sets between games, on top of either set of rules', () => {
+    const t = setup();
+    t.table.join('a', 'A');
+    t.table.join('b', 'B');
+    expect(t.last('b', 'table')!.noElimination).toBe(false);
+    t.table.setMode('b', { mode: 'classic', noElimination: true });
+    expect(t.rejected('b')).toBe('NOT_HOST');
+    t.table.setMode('a', { mode: 'classic', noElimination: 'yes' });
+    expect(t.rejected('a')).toBe('BAD_MESSAGE');
+    t.table.setMode('a', { mode: 'mmaT', noElimination: true });
+    expect(t.last('b', 'table')!).toMatchObject({ mode: 'mmaT', noElimination: true });
+    // An older client that only sends the mode leaves the switch alone.
+    t.table.setMode('a', { mode: 'mmaT' });
+    expect(t.last('b', 'table')!.noElimination).toBe(true);
+    t.table.start('a');
+    expect(t.last('b', 'table')!.game!).toMatchObject({ mode: 'mmaT', noElimination: true });
+    t.table.setMode('a', { mode: 'mmaT', noElimination: false });
+    expect(t.rejected('a')).toBe('GAME_IN_PROGRESS');
+  });
+
+  it('plays on after a check, then counts a win for first place', () => {
+    const t = withGame({ a: ['6H'], b: ['9H'], c: ['8S', '8C'] }, ['5H'], { noElimination: true });
+    t.table.move('a', { type: 'play', cardId: '6H' });
+    let snap = t.last('c', 'table')!;
+    expect(snap.status).toBe('playing');
+    expect(snap.game!.finished).toEqual(['a']);
+    expect(snap.wins).toEqual({});
+    t.table.move('b', { type: 'play', cardId: '9H' });
+    snap = t.last('c', 'table')!;
+    expect(snap.status).toBe('finished');
+    expect(snap.game!.ranking).toEqual(['a', 'b', 'c']);
     expect(snap.wins).toEqual({ a: 1 });
   });
 });

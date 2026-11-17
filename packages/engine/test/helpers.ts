@@ -31,6 +31,9 @@ export interface TableSpec {
   callable?: string[];
   mode?: GameMode;
   contender?: string;
+  noElimination?: boolean;
+  /** No elimination: players who have already checked, in order. */
+  finished?: string[];
 }
 
 export function table(spec: TableSpec): GameState {
@@ -44,7 +47,7 @@ export function table(spec: TableSpec): GameState {
     players: ids.map((id) => ({
       id,
       hand: spec.hands[id]!.map(cardFromId),
-      status: spec.eliminated?.includes(id) ? 'eliminated' : 'active',
+      status: spec.eliminated?.includes(id) ? 'eliminated' : spec.finished?.includes(id) ? 'finished' : 'active',
       callable: spec.callable?.includes(id) ?? false,
     })),
     phase: 'playing',
@@ -61,6 +64,10 @@ export function table(spec: TableSpec): GameState {
     winner: null,
     contender: spec.contender ?? null,
     voided: false,
+    noElimination: spec.noElimination ?? false,
+    finished: spec.finished ?? [],
+    left: [],
+    ranking: null,
   };
 }
 

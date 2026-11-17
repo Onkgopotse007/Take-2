@@ -49,13 +49,13 @@ function chooseMove(s: GameState, agent: Rng): Move | undefined {
   return move.type === 'play' ? { ...move, announce: agent.next() < 0.8 } : move;
 }
 
-function simulate(players: number, seed: number, mode: GameMode = 'classic'): Outcome {
+function simulate(players: number, seed: number, mode: GameMode = 'classic', noElimination = false): Outcome {
   const rng = createSeededRng(seed);
   const agent = createSeededRng(seed ^ 0x9e3779b9);
   let s = createGame(
     Array.from({ length: players }, (_, i) => `p${i + 1}`),
     rng,
-    { mode },
+    { mode, noElimination },
   );
   let moves = 0;
   while (s.phase !== 'gameOver') {
@@ -72,7 +72,16 @@ function simulate(players: number, seed: number, mode: GameMode = 'classic'): Ou
     expect(view.hand).toEqual(viewer.hand);
     expect(JSON.stringify(view)).not.toContain('"drawPile"');
   }
-  if (s.voided) {
+  if (s.noElimination) {
+    // One round, and everyone has a place: checkers in order, then the last player, then leavers.
+    expect(s.round).toBe(1);
+    expect(s.voided).toBe(false);
+    expect([...s.ranking!].sort()).toEqual(s.players.map((p) => p.id).sort());
+    expect(s.ranking!.slice(0, s.finished.length)).toEqual(s.finished);
+    expect(s.ranking!.slice(s.players.length - s.left.length)).toEqual(s.left.slice().reverse());
+    expect(s.winner).toBe(s.ranking![0]);
+    expect(s.players.filter((p) => p.status === 'active')).toHaveLength(s.players.length - s.finished.length - s.left.length);
+  } else if (s.voided) {
     expect(s.winner).toBeNull();
     expect(s.contender).not.toBeNull();
   } else {
@@ -95,6 +104,14 @@ describe('Simulated games', () => {
       const results = Array.from({ length: 30 }, (_, i) => simulate(players, (i + 1) * 104_729 + players, 'mmaT'));
       expect(results.every((r) => r.rounds >= 1)).toBe(true);
     });
+  }
+
+  for (const mode of ['classic', 'mmaT'] as const) {
+    for (let players = 2; players <= 10; players++) {
+      it(`rank every player with no elimination, ${mode} (${players} players, 30 seeds)`, () => {
+        for (let i = 1; i <= 30; i++) simulate(players, i * 15_485_863 + players, mode, true);
+      });
+    }
   }
 
   it('are deterministic for a given seed', () => {

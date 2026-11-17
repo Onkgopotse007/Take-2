@@ -1,5 +1,4 @@
-import type { GameMode } from '@take2/engine';
-import { MmaTNote, MmaTRulesList } from './Rules';
+import { RulesDetails, type TableRules } from './Rules';
 
 /** How the controls work. Says nothing about strategy or who forgot to announce. */
 export function HowToList() {
@@ -37,7 +36,7 @@ export function HowToList() {
   );
 }
 
-export function HowToSheet({ mode, onClose }: { mode: GameMode; onClose(): void }) {
+export function HowToSheet({ rules, onClose }: { rules: TableRules; onClose(): void }) {
   return (
     <>
       <div className="scrim" onClick={onClose} />
@@ -45,13 +44,7 @@ export function HowToSheet({ mode, onClose }: { mode: GameMode; onClose(): void 
         <div className="grabber" aria-hidden="true" />
         <h2 id="howto-title">How to play here</h2>
         <HowToList />
-        {mode === 'mmaT' && (
-          <>
-            <h2>Mma T's house rules</h2>
-            <MmaTNote />
-            <MmaTRulesList />
-          </>
-        )}
+        <RulesDetails rules={rules} />
         <button type="button" className="btn btn-primary" onClick={onClose}>
           Got it
         </button>

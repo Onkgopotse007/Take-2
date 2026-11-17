@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ordinal } from '../lib/feed';
 import { initials } from '../lib/layout';
 
 export interface SeatInfo {
@@ -10,6 +11,8 @@ export interface SeatInfo {
   onAir: boolean;
   /** Mma T's rules: the first to check, the only one who can win. */
   contender?: boolean;
+  /** No elimination: the place they finished in, once they have checked. */
+  place?: number;
 }
 
 interface Props {
@@ -34,7 +37,8 @@ export function Seat({ seat, left, top, compact, isTurn, secondsLeft, speech, ca
   }, [canCallOut]);
 
   const shown = Math.min(seat.cardCount, MAX_BACKS);
-  const status = seat.eliminated ? 'out' : !seat.connected ? 'away' : seat.onAir ? 'on air' : seat.contender ? 'for the win' : null;
+  const placed = seat.place !== undefined ? ordinal(seat.place) : null;
+  const status = placed ?? (seat.eliminated ? 'out' : !seat.connected ? 'away' : seat.onAir ? 'on air' : seat.contender ? 'for the win' : null);
   const cls = `seat${compact ? ' compact' : ''}${seat.eliminated ? ' out' : ''}${!seat.connected ? ' away' : ''}`;
   // Keep the bubble on screen for seats near the edges.
   const bubbleShift = left < 30 ? 0 : left > 70 ? -106 : -53;
@@ -45,7 +49,7 @@ export function Seat({ seat, left, top, compact, isTurn, secondsLeft, speech, ca
       <button
         type="button"
         className={`avatar${isTurn ? ' turn' : ''}`}
-        aria-label={`${seat.name}, ${seat.cardCount} ${seat.cardCount === 1 ? 'card' : 'cards'}${seat.contender ? ', going for the win' : ''}${canCallOut ? '. Tap to call out.' : ''}`}
+        aria-label={`${seat.name}, ${seat.cardCount} ${seat.cardCount === 1 ? 'card' : 'cards'}${seat.contender ? ', going for the win' : ''}${placed ? `, finished ${placed}` : ''}${canCallOut ? '. Tap to call out.' : ''}`}
         aria-expanded={canCallOut ? open : undefined}
         onClick={() => canCallOut && setOpen((o) => !o)}
       >
@@ -59,7 +63,7 @@ export function Seat({ seat, left, top, compact, isTurn, secondsLeft, speech, ca
         ))}
         {seat.cardCount > MAX_BACKS && <span className="backs-more">+{seat.cardCount - MAX_BACKS}</span>}
       </span>
-      {status && <span className={`seat-tag${status === 'for the win' ? ' win' : ''}`}>{status}</span>}
+      {status && <span className={`seat-tag${status === 'for the win' || placed ? ' win' : ''}`}>{status}</span>}
       {open && (
         <div className="bubble" style={{ left: bubbleShift }} role="dialog" aria-label={`Call out ${seat.name}`}>
           <span>Call out {seat.name}?</span>

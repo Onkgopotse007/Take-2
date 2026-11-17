@@ -50,9 +50,17 @@ export const RULES: Record<GameMode, Rules> = {
   mmaT: { jokers: false, anyCardChecks: true, maxSurvivingPoints: MMA_T_LIMIT, toss: false },
 };
 
-/** True if playing `card` as a player's last card ends the round. */
+/** True if playing `card` as a player's last card is a check. */
 export function checksWith(mode: GameMode, card: Card): boolean {
   return RULES[mode].anyCardChecks || isPlainCard(card);
+}
+
+/**
+ * True if a last 8 checks without naming a suit. That is only when the check ends the round: in a
+ * no-elimination game play carries on, so the 8 still names the next suit.
+ */
+export function lastEightNamesNoSuit(state: Pick<GameState, 'mode' | 'noElimination'>, card: Card): boolean {
+  return !state.noElimination && checksWith(state.mode, card);
 }
 
 const REASONS: Record<RejectionCode, string> = {
@@ -101,6 +109,10 @@ export function createGame(playerIds: readonly PlayerId[], rng: Rng, options: Ga
     winner: null,
     contender: null,
     voided: false,
+    noElimination: options.noElimination ?? false,
+    finished: [],
+    left: [],
+    ranking: null,
   };
   dealRound(state, rng, []);
   return state;
@@ -244,8 +256,8 @@ function play(
   if (s.pickedCardId && card.id !== s.pickedCardId) return 'ONLY_PICKED_CARD';
   if (!canPlayCard(s, card)) return 'CARD_NOT_PLAYABLE';
   const checks = p.hand.length === 1 && checksWith(s.mode, card);
-  // A checking 8 ends the round, so there is no next suit to name.
-  const isEight = isRank(card, '8') && !checks;
+  // A checking 8 that ends the round has no next suit to name.
+  const isEight = isRank(card, '8') && !(checks && lastEightNamesNoSuit(s, card));
   if (isEight && (!suit || !SUITS.includes(suit))) return 'SUIT_REQUIRED';
 
   claimTurn(s, p.id, ev);
@@ -260,6 +272,10 @@ function play(
     if (announce) ev.push({ type: 'announced', player: p.id, cardsLeft: left });
   }
 
+  if (checks && s.noElimination) {
+    finish(s, p, card, suit, n, ev);
+    return null;
+  }
   if (checks) {
     endRound(s, p.id, rng, ev);
     return null;
@@ -416,6 +432,7 @@ function toss(s: GameState, p: PlayerState, picks: [number, number], rng: Rng, e
 function forfeit(s: GameState, p: PlayerState, reason: ForfeitReason, ev: Events): RejectionCode | null {
   if (s.phase === 'gameOver') return 'WRONG_PHASE';
   ev.push({ type: 'forfeited', player: p.id, reason });
+  s.left.push(p.id);
 
   if (s.contender === p.id) {
     // Mma T's rules: the only player who could win has gone, so nobody wins.
@@ -469,7 +486,9 @@ function eliminate(s: GameState, p: PlayerState, ev: Events): void {
   p.status = 'eliminated';
   p.callable = false;
   const remaining = activePlayers(s);
-  if (remaining.length === 1) {
+  if (remaining.length === 1 && s.noElimination) {
+    endRanked(s, ev);
+  } else if (remaining.length === 1) {
     s.turn = { kind: 'none' };
     s.penalty = 0;
     s.pickedCardId = null;
@@ -600,6 +619,35 @@ function finaliseRound(s: GameState, ev: Events): void {
   } else {
     s.phase = 'roundOver';
   }
+}
+
+/**
+ * No elimination: a check takes the next place and play carries on without the checker. Their card
+ * still has its effect. When one of the last two checks, the game is over.
+ */
+function finish(s: GameState, p: PlayerState, card: Card, suit: Suit | undefined, n: number, ev: Events): void {
+  ev.push({ type: 'checked', player: p.id });
+  s.finished.push(p.id);
+  p.callable = false;
+  if (n > 2) {
+    // Work out who plays next while the checker is still in the ring.
+    applyEffects(s, p.id, card, suit, n);
+    p.status = 'finished';
+    return;
+  }
+  p.status = 'finished';
+  endRanked(s, ev);
+}
+
+/** No elimination: places in the order players checked, then whoever is left, then leavers (first to leave last). */
+function endRanked(s: GameState, ev: Events): void {
+  s.ranking = [...s.finished, ...activePlayers(s).map((p) => p.id), ...s.left.slice().reverse()];
+  s.phase = 'gameOver';
+  s.turn = { kind: 'none' };
+  s.penalty = 0;
+  s.pickedCardId = null;
+  s.winner = s.ranking[0]!;
+  ev.push({ type: 'gameOver', winner: s.winner });
 }
 
 /** Mma T's rules: the game ends with no winner. */

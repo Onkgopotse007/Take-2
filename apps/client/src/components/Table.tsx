@@ -3,7 +3,7 @@ import { isRank, type Suit } from '@take2/engine';
 import type { TableSnapshot } from '@take2/server/protocol';
 import { canIAct, neighboursOf, playableIds, sortHand, SUIT_GLYPH, suitIsRed } from '../lib/cards';
 import { secondsLeft, useServerNow } from '../lib/clock';
-import { announcement, eventText, makeNamer } from '../lib/feed';
+import { announcement, eventText, makeNamer, ordinal } from '../lib/feed';
 import { opponentsFromMyLeft, seatPositions } from '../lib/layout';
 import type { TableSession } from '../net/session';
 import { CardBack, CardFace } from './Card';
@@ -41,6 +41,13 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
   const playable = playableIds(view, raceOpen);
   const myTurn = canIAct(view) && view.turn.kind !== 'race';
   const meOut = view.players.find((p) => p.id === me)?.status !== 'active';
+  const rules = { mode: snapshot.mode, noElimination: snapshot.noElimination };
+  /** No elimination: places taken so far, 1 for first. */
+  const placeOf = (id: string): number | undefined => {
+    const i = view.finished.indexOf(id);
+    return i < 0 ? undefined : i + 1;
+  };
+  const myPlace = placeOf(me);
   const secs = secondsLeft(snapshot.deadline, now);
 
   // A new turn clears my half-finished intentions.
@@ -163,6 +170,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
               eliminated: p.status === 'eliminated',
               onAir: p.onAir,
               contender: view.contender === p.id && !view.voided,
+              place: placeOf(p.id),
             }}
             left={positions[i]!.left}
             top={positions[i]!.top}
@@ -182,6 +190,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             {myTurn && secs !== null && <TimerRing seconds={secs} total={TURN_SECONDS} />}
             <span>{status}</span>
             {view.contender === me && view.phase === 'playing' && <span className="seat-tag win">for the win</span>}
+            {myPlace !== undefined && <span className="seat-tag win">{ordinal(myPlace)}</span>}
             {speech.get(me) && <span className="chip-note" style={{ fontSize: 13 }}>{speech.get(me)}</span>}
           </div>
           {!meOut && view.phase === 'playing' && (
@@ -197,7 +206,11 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             </div>
           )}
         </div>
-        {meOut ? (
+        {myPlace !== undefined ? (
+          <p className="hand-empty">
+            {myPlace === 1 ? 'You checked first and win!' : `You finished ${ordinal(myPlace)}.`} Watch the rest play on here.
+          </p>
+        ) : meOut ? (
           <p className="hand-empty">You are out of this game. Watch the rest of it here.</p>
         ) : onAir ? (
           <p className="hand-empty">You are on air. Tap the pile on your turn.</p>
@@ -209,7 +222,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             onEight={setEightId}
             onStatus={setHint}
             autoSelect={myTurn ? view.pickedCardId : null}
-            eightNeedsSuit={!(view.mode === 'mmaT' && hand.length === 1)}
+            eightNeedsSuit={!(view.mode === 'mmaT' && !view.noElimination && hand.length === 1)}
           />
         )}
         <p className="status-line" role="status">
@@ -236,15 +249,15 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
           hostName={snapshot.hostId ? who(snapshot.hostId) : 'the host'}
           onPlayAgain={session.start}
           onLeave={onLeave}
-          mode={snapshot.mode}
-          onSetMode={session.setMode}
+          rules={rules}
+          onSetRules={session.setRules}
           tally={Object.entries(snapshot.wins)
             .map(([id, wins]) => ({ id, wins }))
             .filter((t) => names.has(t.id))
             .sort((a, b) => b.wins - a.wins)}
         />
       )}
-      {menuOpen && <Menu code={snapshot.code} mode={view.mode} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
+      {menuOpen && <Menu code={snapshot.code} rules={{ mode: view.mode, noElimination: view.noElimination }} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
     </>
   );
 }

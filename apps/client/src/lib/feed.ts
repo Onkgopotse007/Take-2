@@ -44,3 +44,10 @@ export function eventText(e: GameEvent, who: Namer): string | null {
 export function announcement(cardsLeft: number): string {
   return cardsLeft === 1 ? '1 card!' : `${cardsLeft} cards!`;
 }
+
+/** 1 -> "1st", 2 -> "2nd", 11 -> "11th". */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}

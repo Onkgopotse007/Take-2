@@ -76,7 +76,7 @@ function TablePage({ code, navigate }: { code: string; navigate(path: string): v
         </div>
       )}
       {snap.status === 'lobby' || !snap.game ? (
-        <Lobby snapshot={snap} onStart={session.start} onSetMode={session.setMode} onLeave={leave} />
+        <Lobby snapshot={snap} onStart={session.start} onSetRules={session.setRules} onLeave={leave} />
       ) : (
         <Table session={session} snapshot={snap} onLeave={leave} />
       )}
