@@ -4,6 +4,7 @@ WORKDIR /repo
 RUN npm install -g pnpm@12.6.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/engine/package.json packages/engine/
+COPY packages/madagascar/package.json packages/madagascar/
 COPY apps/server/package.json apps/server/
 COPY apps/client/package.json apps/client/
 RUN pnpm install --frozen-lockfile --filter "@take2/server..."
