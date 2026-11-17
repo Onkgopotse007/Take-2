@@ -3,7 +3,7 @@ import type { TableSnapshot } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
 import { HowToList } from './HowTo';
-import { MmaTNote, MmaTRulesList, NoEliminationRulesList, RulesPicker, type TableRules } from './Rules';
+import { MmaTNote, MmaTRulesList, NoEliminationNote, NoEliminationRulesList, RulesPicker, type TableRules } from './Rules';
 
 interface Props {
   snapshot: TableSnapshot;
@@ -67,6 +67,7 @@ export function Lobby({ snapshot, onStart, onSetRules, onLeave }: Props) {
       {rules.noElimination && (
         <section className="tips-card" aria-labelledby="lobby-no-elimination">
           <h2 id="lobby-no-elimination">No elimination</h2>
+          <NoEliminationNote />
           <NoEliminationRulesList />
         </section>
       )}

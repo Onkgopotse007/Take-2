@@ -103,6 +103,11 @@ export function MmaTRulesList({ noElimination = false }: { noElimination?: boole
   );
 }
 
+/** Where No elimination comes from, in the creator's words. */
+export function NoEliminationNote() {
+  return <p className="rules-note">How we played at junior secondary school, between classes and at break. Nobody gets knocked out, everybody finishes.</p>;
+}
+
 /** What changes with no elimination. */
 export function NoEliminationRulesList() {
   return (
@@ -137,6 +142,7 @@ export function RulesDetails({ rules }: { rules: TableRules }) {
       {rules.noElimination && (
         <>
           <h2>No elimination</h2>
+          <NoEliminationNote />
           <NoEliminationRulesList />
         </>
       )}
