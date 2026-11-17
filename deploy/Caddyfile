@@ -1,7 +1,9 @@
-# The game lives at https://take2.code-crunchers.com. Caddy gets and renews its certificate by
-# itself (kept on the take2-caddy-data volume). DOMAIN can be overridden, e.g. DOMAIN=localhost
-# to try the image on a laptop.
-{$DOMAIN:take2.code-crunchers.com} {
+# Take 2 lives at https://take2.code-crunchers.com and Madagascar at
+# https://madagascar.code-crunchers.com. Both names serve the same app, which picks the game from
+# the address. Caddy gets and renews a certificate for each by itself (kept on the
+# take2-caddy-data volume). DOMAIN and MADAGASCAR_DOMAIN can be overridden, e.g. to localhost and
+# madagascar.localhost to try the image on a laptop.
+{$DOMAIN:take2.code-crunchers.com}, {$MADAGASCAR_DOMAIN:madagascar.code-crunchers.com} {
 	encode zstd gzip
 
 	# Game server: matchmaking and WebSockets. The client always talks to /api.
@@ -25,13 +27,13 @@
 	}
 }
 
-# Plain HTTP. The game is only reachable by its name: the domain is sent to HTTPS, and anything
+# Plain HTTP. The games are only reachable by name: those are sent to HTTPS, and anything
 # else (such as http://140.238.81.209) gets its connection closed. HTTPS by IP already fails,
 # as there is no certificate for it. Certificate challenges are answered before these routes.
 http:// {
 	# Kubernetes' readiness probe, addressed to the pod's own IP (pods are 10.42.x.x on k3s).
 	@probe expression {host}.startsWith("10.42.")
-	@site host {$DOMAIN:take2.code-crunchers.com}
+	@site host {$DOMAIN:take2.code-crunchers.com} {$MADAGASCAR_DOMAIN:madagascar.code-crunchers.com}
 
 	# route keeps the order as written (Caddy would otherwise run abort before respond).
 	route {

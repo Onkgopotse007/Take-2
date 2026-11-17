@@ -1,3 +1,4 @@
+import type { GameEvent as MadagascarEvent } from '@take2/madagascar';
 import type { GameEvent } from '@take2/engine';
 
 export type Namer = (id: string, asObject?: boolean) => string;
@@ -50,4 +51,27 @@ export function ordinal(n: number): string {
   const tens = n % 100;
   const suffix = tens >= 11 && tens <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
   return `${n}${suffix}`;
+}
+
+/** Toast text for Madagascar events worth calling out. Plays show on the table instead. */
+export function madagascarEventText(e: MadagascarEvent, who: Namer): string | null {
+  switch (e.type) {
+    case 'pickedUp':
+      return `${who(e.player)} matched and took ${e.count} ${e.count === 1 ? 'card' : 'cards'}`;
+    case 'handsPhase':
+      return 'The oval is empty. Play from your hands!';
+    case 'finished': {
+      const name = who(e.player);
+      return `${name} ${name === 'You' ? 'finish' : 'finishes'} ${ordinal(e.place)}`;
+    }
+    case 'forfeited': {
+      const name = who(e.player);
+      if (e.reason === 'left') return name === 'You' ? 'You left the game' : `${name} left the game`;
+      return name === 'You' ? 'You missed 3 turns in a row and are out' : `${name} missed 3 turns in a row and is out`;
+    }
+    case 'deadlock':
+      return 'Stuck on one card. Fewest cards wins.';
+    default:
+      return null;
+  }
 }

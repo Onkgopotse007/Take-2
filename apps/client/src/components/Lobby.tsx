@@ -1,23 +1,29 @@
-import { useState } from 'react';
-import type { TableSnapshot } from '@take2/server/protocol';
+import { useState, type ReactNode } from 'react';
+import type { Seat } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
-import { HowToList } from './HowTo';
-import { MmaTNote, MmaTRulesList, NoEliminationNote, NoEliminationRulesList, RulesPicker, type TableRules } from './Rules';
 
-interface Props {
-  snapshot: TableSnapshot;
-  onStart(): void;
-  onSetRules(rules: TableRules): void;
-  onLeave(): void;
+/** What the lobby shows, from either game's snapshot. */
+export interface LobbySnapshot {
+  code: string;
+  you: string;
+  hostId: string | null;
+  seats: Seat[];
 }
 
-export function Lobby({ snapshot, onStart, onSetRules, onLeave }: Props) {
+interface Props {
+  snapshot: LobbySnapshot;
+  onStart(): void;
+  onLeave(): void;
+  /** The game's own sections: its rules and how to play. */
+  children: ReactNode;
+}
+
+export function Lobby({ snapshot, onStart, onLeave, children }: Props) {
   const [note, setNote] = useState('');
   const isHost = snapshot.hostId === snapshot.you;
   const host = snapshot.seats.find((s) => s.id === snapshot.hostId);
   const enough = snapshot.seats.length >= 2;
-  const rules: TableRules = { mode: snapshot.mode, noElimination: snapshot.noElimination };
 
   return (
     <main className="screen">
@@ -49,33 +55,7 @@ export function Lobby({ snapshot, onStart, onSetRules, onLeave }: Props) {
         </ul>
       </section>
 
-      <section className="field" aria-labelledby="lobby-rules">
-        <h2 id="lobby-rules" style={{ margin: 0, fontSize: 18 }}>
-          Rules
-        </h2>
-        <RulesPicker rules={rules} isHost={isHost} onChange={onSetRules} />
-      </section>
-
-      {snapshot.mode === 'mmaT' && (
-        <section className="tips-card" aria-labelledby="lobby-mma-t">
-          <h2 id="lobby-mma-t">Mma T's house rules</h2>
-          <MmaTNote />
-          <MmaTRulesList noElimination={rules.noElimination} />
-        </section>
-      )}
-
-      {rules.noElimination && (
-        <section className="tips-card" aria-labelledby="lobby-no-elimination">
-          <h2 id="lobby-no-elimination">No elimination</h2>
-          <NoEliminationNote />
-          <NoEliminationRulesList />
-        </section>
-      )}
-
-      <section className="tips-card" aria-labelledby="lobby-howto">
-        <h2 id="lobby-howto">How to play here</h2>
-        <HowToList />
-      </section>
+      {children}
 
       <div className="field" style={{ marginTop: 'auto' }}>
         {isHost ? (

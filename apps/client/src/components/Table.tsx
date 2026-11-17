@@ -9,6 +9,7 @@ import type { TableSession } from '../net/session';
 import { CardBack, CardFace } from './Card';
 import { DirectionArrows } from './DirectionArrows';
 import { Hand } from './Hand';
+import { HowToSheet } from './HowTo';
 import { Menu } from './Menu';
 import { ResultsSheet } from './ResultsSheet';
 import { Seat } from './Seat';
@@ -257,7 +258,7 @@ export function Table({ session, snapshot, onLeave }: { session: TableSession; s
             .sort((a, b) => b.wins - a.wins)}
         />
       )}
-      {menuOpen && <Menu code={snapshot.code} rules={{ mode: view.mode, noElimination: view.noElimination }} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
+      {menuOpen && <Menu code={snapshot.code} howTo={(close) => <HowToSheet rules={{ mode: view.mode, noElimination: view.noElimination }} onClose={close} />} onClose={() => setMenuOpen(false)} onLeave={onLeave} />}
     </>
   );
 }

@@ -1,5 +1,14 @@
 /** Messages between the game server and clients. Import types from here in the client. */
 import type { GameEvent, GameMode, Move, PlayerView, RejectionCode } from '@take2/engine';
+import type {
+  GameEvent as MadagascarEvent,
+  MadagascarView,
+  Move as MadagascarMove,
+  RejectionCode as MadagascarRejectionCode,
+} from '@take2/madagascar';
+
+/** Which game a table plays. Each has its own room type and site. */
+export type GameKind = 'take2' | 'madagascar';
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -20,6 +29,8 @@ export interface ClientMessages {
 /** Options for `client.create('table', ...)` and `client.joinById(code, ...)`. */
 export interface JoinOptions {
   name?: string;
+  /** The game the client shows. A code for the other game is refused. Older clients send none (Take 2). */
+  game?: GameKind;
   /** From an earlier snapshot: rejoins that seat even if the session has expired. */
   seatKey?: string;
 }
@@ -58,6 +69,7 @@ export interface TableSnapshot {
 
 export type ServerRejectionCode =
   | RejectionCode
+  | MadagascarRejectionCode
   | 'BAD_MESSAGE'
   | 'TOO_EARLY'
   | 'BEATEN_TO_IT'
@@ -76,5 +88,42 @@ export interface Rejection {
 export interface ServerMessages {
   table: TableSnapshot;
   events: GameEvent[];
+  rejected: Rejection;
+}
+
+// ---------------------------------------------------------------------------
+// Madagascar
+// ---------------------------------------------------------------------------
+
+export type MadagascarClientMove = DistributiveOmit<Exclude<MadagascarMove, { type: 'forfeit' }>, 'player'>;
+
+/** Client -> server message types for a Madagascar table. */
+export interface MadagascarClientMessages {
+  start: Record<string, never>;
+  move: MadagascarClientMove;
+  sync: Record<string, never>;
+}
+
+/** Sent as `table` to each player of a Madagascar table after every change. */
+export interface MadagascarSnapshot {
+  code: string;
+  you: string;
+  seatKey: string | null;
+  hostId: string | null;
+  seats: Seat[];
+  status: TableStatus;
+  /** Games won at this table, by player id. Everyone sharing first place gets a win. */
+  wins: Record<string, number>;
+  game: MadagascarView | null;
+  /** Server time at which the first card may be turned. */
+  raceOpensAt: number | null;
+  /** Server time at which the current timer fires. */
+  deadline: number | null;
+  serverNow: number;
+}
+
+export interface MadagascarServerMessages {
+  table: MadagascarSnapshot;
+  events: MadagascarEvent[];
   rejected: Rejection;
 }

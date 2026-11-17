@@ -32,11 +32,11 @@ Releases end games in progress (tables live in the server's memory), so merge wh
 
 ## Domain
 
-The game lives at **https://take2.code-crunchers.com**.
+Take 2 lives at **https://take2.code-crunchers.com** and Madagascar at **https://madagascar.code-crunchers.com**. Both are the same app and server; the app picks the game from the address.
 
-- DNS is on Cloudflare: an A record `take2` → `140.238.81.209`, **DNS only** (grey cloud).
-- The domain is set in `deploy/Caddyfile`. Caddy gets and renews the certificate by itself (stored on the `take2-caddy-data` volume).
-- Only the name works: `http://take2.code-crunchers.com` redirects to HTTPS, and the bare IP (`http://140.238.81.209`) gets its connection closed.
+- DNS is on Cloudflare: A records `take2` and `madagascar` → `140.238.81.209`, both **DNS only** (grey cloud).
+- The domains are set in `deploy/Caddyfile`. Caddy gets and renews a certificate for each by itself (stored on the `take2-caddy-data` volume).
+- Only the names work: plain HTTP redirects to HTTPS, and the bare IP (`http://140.238.81.209`) gets its connection closed.
 - To move to another domain, change it in the Caddyfile, `.github/workflows/deploy.yml` and `deploy/deploy.sh`, and point the new name's A record at the VM first.
 
 ## Firewall

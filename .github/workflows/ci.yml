@@ -28,14 +28,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Start Caddy with the Caddyfile
         run: |
-          docker run -d --name caddy -p 8080:80 -e DOMAIN=localhost \
+          docker run -d --name caddy -p 8080:80 -e DOMAIN=localhost -e MADAGASCAR_DOMAIN=madagascar.localhost \
             -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine
           for i in $(seq 20); do curl -s -o /dev/null http://127.0.0.1:8080/ -H 'Host: 10.42.0.9:80' && break; sleep 0.5; done
-      - name: Check the domain, the bare IP and the readiness probe
+      - name: Check both domains, the bare IP and the readiness probe
         run: |
           set -x
           # The domain over plain HTTP is sent to HTTPS, keeping the path.
           [[ "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: localhost' http://127.0.0.1:8080/K7MPX)" =~ ^30[18]\ https://localhost/K7MPX$ ]]
+          [[ "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: madagascar.localhost' http://127.0.0.1:8080/K7MPX)" =~ ^30[18]\ https://madagascar.localhost/K7MPX$ ]]
           # The bare IP gets nothing.
           if curl -s -H 'Host: 140.238.81.209' http://127.0.0.1:8080/; then echo 'The bare IP still answers'; exit 1; fi
           # Kubernetes' probe, addressed to the pod IP, is answered.
