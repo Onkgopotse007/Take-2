@@ -9,6 +9,7 @@ COPY apps/server/package.json apps/server/
 COPY apps/client/package.json apps/client/
 RUN pnpm install --frozen-lockfile --filter "@take2/server..."
 COPY packages/engine packages/engine
+COPY packages/madagascar packages/madagascar
 COPY apps/server apps/server
 RUN pnpm --filter @take2/server build
 

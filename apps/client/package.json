@@ -13,6 +13,7 @@
   "dependencies": {
     "@colyseus/sdk": "^0.18.5",
     "@take2/engine": "workspace:*",
+    "@take2/madagascar": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

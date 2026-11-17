@@ -1,0 +1,11 @@
+{
+  "name": "Madagascar",
+  "short_name": "Madagascar",
+  "description": "A card game of luck and nerve.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2A1C14",
+  "theme_color": "#2A1C14",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

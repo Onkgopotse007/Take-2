@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { shareTable } from '../lib/share';
-import { HowToSheet } from './HowTo';
-import type { TableRules } from './Rules';
 
-export function Menu({ code, rules, onClose, onLeave }: { code: string; rules: TableRules; onClose(): void; onLeave(): void }) {
+interface Props {
+  code: string;
+  /** The game's How to play sheet. */
+  howTo(close: () => void): ReactNode;
+  onClose(): void;
+  onLeave(): void;
+}
+
+export function Menu({ code, howTo: renderHowTo, onClose, onLeave }: Props) {
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [howTo, setHowTo] = useState(false);
-  if (howTo) return <HowToSheet rules={rules} onClose={() => setHowTo(false)} />;
+  if (howTo) return <>{renderHowTo(() => setHowTo(false))}</>;
   return (
     <>
       <div className="scrim" onClick={onClose} />

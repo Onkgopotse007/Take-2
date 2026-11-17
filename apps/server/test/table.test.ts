@@ -1,33 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { cardFromId, createSeededRng, leadFromCard, type GameState, type Turn } from '@take2/engine';
 import type { ServerMessages } from '../src/protocol';
-import { DEFAULT_TIMINGS, Table, type Outbox, type Scheduler } from '../src/table';
+import { DEFAULT_TIMINGS, Table, type Outbox } from '../src/table';
+import { FakeClock } from './clock';
 
 const T = DEFAULT_TIMINGS;
-
-class FakeClock implements Scheduler {
-  private t = 1_000_000;
-  private timers: { at: number; cb: () => void; cleared: boolean }[] = [];
-  now() {
-    return this.t;
-  }
-  setTimeout(cb: () => void, ms: number) {
-    const timer = { at: this.t + ms, cb, cleared: false };
-    this.timers.push(timer);
-    return { clear: () => void (timer.cleared = true) };
-  }
-  advance(ms: number) {
-    const end = this.t + ms;
-    for (;;) {
-      const due = this.timers.filter((x) => !x.cleared && x.at <= end).sort((a, b) => a.at - b.at)[0];
-      if (!due) break;
-      due.cleared = true;
-      this.t = due.at;
-      due.cb();
-    }
-    this.t = end;
-  }
-}
 
 type Sent = { to: string; type: keyof ServerMessages; message: unknown };
 

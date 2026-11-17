@@ -7,7 +7,7 @@ Use British English in all user-facing text. Do not use em-dashes in UI copy.
 ## Open decisions (defaults until the owner says otherwise)
 
 - **Repo:** new GitHub repo named `take2`.
-- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP redirects to HTTPS; the bare IP no longer serves the game. The second game, Madagascar, will be at `https://madagascar.code-crunchers.com` (DNS only A record added 2026-11-17).
+- **Domain:** `code-crunchers.com` (the owner's company, Code Crunchers Solutions; Cloudflare DNS). The game is at `https://take2.code-crunchers.com`; `cardgames.` will be a portal for the owner's games and the root the company site. Plain HTTP redirects to HTTPS; the bare IP no longer serves the game. The second game, Madagascar, is at `https://madagascar.code-crunchers.com` (DNS only A record added 2026-11-17).
 
 ## Stack
 
@@ -133,7 +133,12 @@ The host picks the rules in the lobby, or on the results sheet before a rematch.
 
 ## Madagascar (second game)
 
-A second card game in the same repo, at `https://madagascar.code-crunchers.com`, with the same table, lobby, join codes and look as Take 2. The rules engine is `packages/madagascar` (it reuses the cards and RNG from `packages/engine`). This section is the source of truth for it.
+A second card game in the same repo, at `https://madagascar.code-crunchers.com`, with the same table, lobby, join codes and look as Take 2. This section is the source of truth for it.
+
+- **Engine:** `packages/madagascar` (reuses the cards and RNG from `packages/engine`).
+- **Server:** the same server runs both games. Madagascar tables are the Colyseus room type `madagascar` (`MadagascarTable`); seats, names, the host and seat keys are shared with Take 2 (`Seating`). Join codes are unique across both games, and a join for the wrong game is refused with "Table X is a Madagascar table."
+- **Client:** one app; it shows Madagascar when the address starts with `madagascar.` (in development, open the Vite address with `madagascar.localhost` in place of `localhost`), Take 2 otherwise. Its screens are in `apps/client/src/components/madagascar`.
+- **Hosting:** both names are site addresses in `deploy/Caddyfile`; nothing else in Kubernetes differs.
 
 The creator's note, shown with the rules: "We called it Madagascar, maybe because the spread of cards was ovalish, like the island."
 

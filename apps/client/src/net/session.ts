@@ -3,12 +3,13 @@ import { Client, type Room } from '@colyseus/sdk';
 import type { GameEvent, GameMode } from '@take2/engine';
 import type { ClientMove, Rejection, TableSnapshot } from '@take2/server/protocol';
 import { syncServerClock } from '../lib/clock';
+import { GAME } from '../lib/game';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'error';
 
-export interface FeedItem {
+export interface FeedItem<E = GameEvent> {
   id: number;
-  event: GameEvent;
+  event: E;
   at: number;
 }
 
@@ -23,6 +24,8 @@ function endpoint(): string {
 
 let client: Client | null = null;
 const getClient = () => (client ??= new Client(endpoint()));
+/** Colyseus room type for this site's game. */
+const ROOM_TYPE = GAME === 'madagascar' ? 'madagascar' : 'table';
 
 const tokenKey = (code: string) => `take2:token:${code}`;
 const seatKeyKey = (code: string) => `take2:seat:${code}`;
@@ -52,7 +55,7 @@ let seq = 0;
 
 /** Creates a table and keeps the room open for the table page. Returns the join code. */
 export async function createTable(name: string): Promise<string> {
-  const room = await getClient().create('table', { name });
+  const room = await getClient().create(ROOM_TYPE, { name, game: GAME });
   sessionStorage.setItem(tokenKey(room.roomId), room.reconnectionToken);
   opening.set(room.roomId, Promise.resolve(room));
   return room.roomId;
@@ -71,7 +74,7 @@ function openRoom(code: string, name: string): Promise<Room> {
         }
       }
       // The token can be spent or expired; the seat key still gets us back into our own seat.
-      return getClient().joinById(code, { name, seatKey: loadSeatKey(code) });
+      return getClient().joinById(code, { name, game: GAME, seatKey: loadSeatKey(code) });
     })();
     p.catch(() => opening.delete(code));
     opening.set(code, p);
@@ -81,28 +84,40 @@ function openRoom(code: string, name: string): Promise<Room> {
 
 function friendlyError(err: unknown, code: string): string {
   const message = err instanceof Error ? err.message : String(err);
+  if (/ is a .* table\./.test(message)) return message;
   if (/not found|invalid|does not exist/i.test(message)) return `No table found with code ${code}.`;
   if (/locked/i.test(message)) return 'A game is already in progress at this table.';
   return message || 'Could not connect. Check your connection and try again.';
 }
 
-export interface TableSession {
+/** The parts of a snapshot the session itself uses. Both games' snapshots have them. */
+interface BaseSnapshot {
+  seatKey: string | null;
+  serverNow: number;
+}
+
+/** A connection to one table. The type parameters default to Take 2's messages. */
+export interface TableSession<S extends BaseSnapshot = TableSnapshot, E = GameEvent, M = ClientMove> {
   status: ConnectionStatus;
   error: string | null;
-  snapshot: TableSnapshot | null;
-  feed: FeedItem[];
+  snapshot: S | null;
+  feed: FeedItem<E>[];
   rejection: RejectionItem | null;
   start(): void;
+  /** Take 2 only. */
   setRules(rules: { mode: GameMode; noElimination: boolean }): void;
-  move(move: ClientMove): void;
+  move(move: M): void;
   leave(): Promise<void>;
 }
 
-export function useTableSession(code: string, name: string | null): TableSession {
+export function useTableSession<S extends BaseSnapshot = TableSnapshot, E = GameEvent, M = ClientMove>(
+  code: string,
+  name: string | null,
+): TableSession<S, E, M> {
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<TableSnapshot | null>(null);
-  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [snapshot, setSnapshot] = useState<S | null>(null);
+  const [feed, setFeed] = useState<FeedItem<E>[]>([]);
   const [rejection, setRejection] = useState<RejectionItem | null>(null);
   const roomRef = useRef<Room | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -122,12 +137,12 @@ export function useTableSession(code: string, name: string | null): TableSession
         sessionStorage.setItem(tokenKey(code), room.reconnectionToken);
 
         cleanups.push(
-          room.onMessage('table', (s: TableSnapshot) => {
+          room.onMessage('table', (s: S) => {
             syncServerClock(s.serverNow);
             if (s.seatKey) saveSeatKey(code, s.seatKey);
             setSnapshot(s);
           }),
-          room.onMessage('events', (events: GameEvent[]) => {
+          room.onMessage('events', (events: E[]) => {
             const at = Date.now();
             setFeed((f) => [...f.slice(-40), ...events.map((event) => ({ id: ++seq, event, at }))]);
           }),
@@ -185,7 +200,7 @@ export function useTableSession(code: string, name: string | null): TableSession
 
   const start = useCallback(() => roomRef.current?.send('start', {}), []);
   const setRules = useCallback((rules: { mode: GameMode; noElimination: boolean }) => roomRef.current?.send('setMode', rules), []);
-  const move = useCallback((m: ClientMove) => roomRef.current?.send('move', m), []);
+  const move = useCallback((m: M) => roomRef.current?.send('move', m), []);
   const leave = useCallback(async () => {
     leaving.current = true;
     sessionStorage.removeItem(tokenKey(code));

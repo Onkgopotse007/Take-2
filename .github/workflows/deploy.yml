@@ -81,3 +81,5 @@ jobs:
         run: |
           curl -fsS --retry 10 --retry-delay 3 --retry-all-errors -o /dev/null https://take2.code-crunchers.com/
           curl -fsS --retry 10 --retry-delay 3 --retry-all-errors https://take2.code-crunchers.com/api/healthz
+          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors -o /dev/null https://madagascar.code-crunchers.com/
+          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors https://madagascar.code-crunchers.com/api/healthz

@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import type { MadagascarSnapshot, TableSnapshot } from '@take2/server/protocol';
 import { Home } from './components/Home';
 import { Lobby } from './components/Lobby';
+import { MadagascarTable, type MadagascarSession } from './components/madagascar/MadagascarTable';
+import { MadagascarHowToList, MadagascarNote, MadagascarRulesList } from './components/madagascar/Rules';
 import { Table } from './components/Table';
+import { Take2Lobby } from './components/Take2Lobby';
+import { GAME, GAME_NAME } from './lib/game';
 import { CODE_PATTERN, loadName, normaliseCode, saveName } from './lib/prefs';
-import { useTableSession } from './net/session';
+import { useTableSession, type TableSession } from './net/session';
 
 function usePath(): [string, (path: string) => void] {
   const [path, setPath] = useState(location.pathname);
@@ -27,7 +32,8 @@ export function App() {
 
 function TablePage({ code, navigate }: { code: string; navigate(path: string): void }) {
   const [name, setName] = useState<string | null>(() => loadName() || null);
-  const session = useTableSession(code, name);
+  // One connection type for both games; each game's screens narrow it below.
+  const session = useTableSession<TableSnapshot | MadagascarSnapshot, never, never>(code, name);
   const leave = async () => {
     await session.leave();
     navigate('/');
@@ -75,12 +81,31 @@ function TablePage({ code, navigate }: { code: string; navigate(path: string): v
           Connection lost. Reconnecting...
         </div>
       )}
-      {snap.status === 'lobby' || !snap.game ? (
-        <Lobby snapshot={snap} onStart={session.start} onSetRules={session.setRules} onLeave={leave} />
+      {GAME === 'madagascar' ? (
+        <MadagascarScreens session={session as unknown as MadagascarSession} snapshot={snap as MadagascarSnapshot} onLeave={leave} />
+      ) : snap.status === 'lobby' || !snap.game ? (
+        <Take2Lobby snapshot={snap as TableSnapshot} onStart={session.start} onSetRules={session.setRules} onLeave={leave} />
       ) : (
-        <Table session={session} snapshot={snap} onLeave={leave} />
+        <Table session={session as unknown as TableSession} snapshot={snap as TableSnapshot} onLeave={leave} />
       )}
     </>
+  );
+}
+
+function MadagascarScreens({ session, snapshot, onLeave }: { session: MadagascarSession; snapshot: MadagascarSnapshot; onLeave(): void }) {
+  if (snapshot.status !== 'lobby' && snapshot.game) return <MadagascarTable session={session} snapshot={snapshot} onLeave={onLeave} />;
+  return (
+    <Lobby snapshot={snapshot} onStart={session.start} onLeave={onLeave}>
+      <section className="tips-card" aria-labelledby="lobby-madagascar">
+        <h2 id="lobby-madagascar">How Madagascar works</h2>
+        <MadagascarNote />
+        <MadagascarRulesList />
+      </section>
+      <section className="tips-card" aria-labelledby="lobby-howto">
+        <h2 id="lobby-howto">How to play here</h2>
+        <MadagascarHowToList />
+      </section>
+    </Lobby>
   );
 }
 
@@ -95,7 +120,7 @@ function NameForm({ code, onDone }: { code: string; onDone(name: string): void }
   return (
     <main className="screen">
       <div className="brand">
-        <h1>Take 2</h1>
+        <h1>{GAME_NAME[GAME]}</h1>
         <p>You have been invited to table {code}.</p>
       </div>
       <form className="field" onSubmit={submit}>

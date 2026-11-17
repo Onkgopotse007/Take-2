@@ -12,7 +12,10 @@ import {
   type Move,
   type Rng,
 } from '@take2/engine';
-import type { ClientMove, Rejection, Seat, ServerMessages, ServerRejectionCode, TableSnapshot, TableStatus } from './protocol';
+import type { ClientMove, Rejection, ServerMessages, ServerRejectionCode, TableSnapshot, TableStatus } from './protocol';
+import { Seating } from './seating';
+
+export { cleanName } from './seating';
 
 export interface Timings {
   /** Countdown after dealing before starting plays are accepted. */
@@ -48,8 +51,8 @@ export interface Scheduler {
   setTimeout(callback: () => void, ms: number): Timer;
 }
 
-export interface Outbox {
-  send<K extends keyof ServerMessages>(playerId: string, type: K, message: ServerMessages[K]): void;
+export interface Outbox<M = ServerMessages> {
+  send<K extends keyof M & string>(playerId: string, type: K, message: M[K]): void;
 }
 
 export interface TableOptions {
@@ -71,10 +74,8 @@ const REASONS: Partial<Record<ServerRejectionCode, string>> = {
   TABLE_FULL: `This table is full (${MAX_PLAYERS} players).`,
 };
 
-const NAME_MAX = 20;
 /** Timed-out turns in a row before a player forfeits. */
 export const MISSED_TURNS_LIMIT = 3;
-const KEY_ALPHABET = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
  * One game table: lobby, the authoritative engine state, timers and the start race.
@@ -88,16 +89,13 @@ export class Table {
   private readonly timings: Timings;
   private readonly onStatusChange: (status: TableStatus) => void;
 
-  private seats: Seat[] = [];
-  private hostId: string | null = null;
+  private readonly seating: Seating;
   private game: GameState | null = null;
   private raceOpensAt: number | null = null;
   private deadline: number | null = null;
   private timer: Timer | null = null;
   private raceCandidates: { player: string; move: Move }[] | null = null;
   private raceTimer: Timer | null = null;
-  /** Secret per seat, so a player can get back into their seat even if their session is gone. */
-  private keys = new Map<string, string>();
   /** Timed-out turns in a row, per player. */
   private missed = new Map<string, number>();
   private mode: GameMode = 'classic';
@@ -111,6 +109,7 @@ export class Table {
     this.outbox = options.outbox;
     this.timings = options.timings ?? DEFAULT_TIMINGS;
     this.onStatusChange = options.onStatusChange ?? (() => {});
+    this.seating = new Seating(this.rng);
   }
 
   get status(): TableStatus {
@@ -119,16 +118,14 @@ export class Table {
   }
 
   get playerCount(): number {
-    return this.seats.length;
+    return this.seating.count;
   }
 
   /** Returns a rejection if the player may not sit down. */
   join(id: string, rawName: unknown): Rejection | null {
     if (this.status === 'playing') return rejection('GAME_IN_PROGRESS');
-    if (this.seats.length >= MAX_PLAYERS) return rejection('TABLE_FULL');
-    this.seats.push({ id, name: cleanName(rawName, this.seats.length + 1), connected: true });
-    this.keys.set(id, this.newKey());
-    this.hostId ??= id;
+    if (this.seating.full) return rejection('TABLE_FULL');
+    this.seating.add(id, rawName);
     this.broadcastSnapshots();
     return null;
   }
@@ -138,14 +135,9 @@ export class Table {
    * after their session has expired, so nobody is locked out of their own game.
    */
   reclaim(seatKey: unknown): string | null {
-    if (typeof seatKey !== 'string' || !seatKey) return null;
-    for (const [id, key] of this.keys) {
-      if (key === seatKey && this.seat(id)) {
-        this.setConnected(id, true);
-        return id;
-      }
-    }
-    return null;
+    const id = this.seating.reclaim(seatKey);
+    if (id) this.setConnected(id, true);
+    return id;
   }
 
   /**
@@ -164,8 +156,7 @@ export class Table {
         return;
       }
     } else {
-      this.seats = this.seats.filter((s) => s.id !== id);
-      this.keys.delete(id);
+      this.seating.remove(id);
     }
     this.reassignHostIfNeeded();
     this.reschedule();
@@ -183,14 +174,13 @@ export class Table {
 
   start(id: string): void {
     if (this.status === 'playing') return this.reject(id, 'GAME_IN_PROGRESS');
-    if (id !== this.hostId) return this.reject(id, 'NOT_HOST');
+    if (id !== this.seating.hostId) return this.reject(id, 'NOT_HOST');
     // Anyone who left after a finished game gives up their seat for the rematch.
-    this.seats = this.seats.filter((s) => s.connected);
-    for (const key of [...this.keys.keys()]) if (!this.seat(key)) this.keys.delete(key);
-    if (this.seats.length < MIN_PLAYERS) return this.reject(id, 'NOT_ENOUGH_PLAYERS');
+    this.seating.pruneDisconnected();
+    if (this.seating.count < MIN_PLAYERS) return this.reject(id, 'NOT_ENOUGH_PLAYERS');
     this.missed.clear();
     this.game = createGame(
-      this.seats.map((s) => s.id),
+      this.seating.seats.map((s) => s.id),
       this.rng,
       { mode: this.mode, noElimination: this.noElimination },
     );
@@ -206,7 +196,7 @@ export class Table {
     if (mode !== 'classic' && mode !== 'mmaT') return this.reject(id, 'BAD_MESSAGE');
     if (noElimination !== undefined && typeof noElimination !== 'boolean') return this.reject(id, 'BAD_MESSAGE');
     if (this.status === 'playing') return this.reject(id, 'GAME_IN_PROGRESS');
-    if (id !== this.hostId) return this.reject(id, 'NOT_HOST');
+    if (id !== this.seating.hostId) return this.reject(id, 'NOT_HOST');
     this.mode = mode;
     if (noElimination !== undefined) this.noElimination = noElimination;
     this.broadcastSnapshots();
@@ -248,9 +238,9 @@ export class Table {
     return {
       code: this.code,
       you: id,
-      hostId: this.hostId,
-      seats: this.seats.map((s) => ({ ...s })),
-      seatKey: this.keys.get(id) ?? null,
+      hostId: this.seating.hostId,
+      seats: this.seating.publicSeats(),
+      seatKey: this.seating.keyOf(id),
       status: this.status,
       mode: this.mode,
       noElimination: this.noElimination,
@@ -386,12 +376,6 @@ export class Table {
     this.apply(g.pickedCardId ? { type: 'pass', player } : { type: 'pick', player });
   }
 
-  private newKey(): string {
-    let key = '';
-    for (let i = 0; i < 24; i++) key += KEY_ALPHABET[randomInt(this.rng, KEY_ALPHABET.length)];
-    return key;
-  }
-
   private clearTimer(): void {
     this.timer?.clear();
     this.timer = null;
@@ -399,36 +383,29 @@ export class Table {
   }
 
   private broadcastSnapshots(): void {
-    for (const seat of this.seats) this.outbox.send(seat.id, 'table', this.snapshotFor(seat.id));
+    for (const seat of this.seating.seats) this.outbox.send(seat.id, 'table', this.snapshotFor(seat.id));
   }
 
   private broadcastEvents(events: GameEvent[]): void {
     if (events.length === 0) return;
-    for (const seat of this.seats) this.outbox.send(seat.id, 'events', events);
+    for (const seat of this.seating.seats) this.outbox.send(seat.id, 'events', events);
   }
 
   private reject(id: string, code: ServerRejectionCode): void {
     this.outbox.send(id, 'rejected', rejection(code));
   }
 
-  private seat(id: string): Seat | undefined {
-    return this.seats.find((s) => s.id === id);
+  private seat(id: string) {
+    return this.seating.seat(id);
   }
 
   private reassignHostIfNeeded(): void {
-    const host = this.hostId ? this.seat(this.hostId) : undefined;
-    if (host?.connected) return;
-    this.hostId = this.seats.find((s) => s.connected)?.id ?? this.seats[0]?.id ?? null;
+    this.seating.reassignHostIfNeeded();
   }
 }
 
-function rejection(code: ServerRejectionCode): Rejection {
+export function rejection(code: ServerRejectionCode): Rejection {
   return { code, reason: REASONS[code] ?? 'That move is not allowed.' };
-}
-
-export function cleanName(raw: unknown, seatNumber: number): string {
-  const name = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim().slice(0, NAME_MAX) : '';
-  return name || `Player ${seatNumber}`;
 }
 
 /** Validates the shape of an untrusted client move. Rule checks are left to the engine. */

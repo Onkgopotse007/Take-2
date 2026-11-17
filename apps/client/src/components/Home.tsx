@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { createTable } from '../net/session';
 import { CODE_PATTERN, loadName, normaliseCode, saveName } from '../lib/prefs';
+import { GAME, GAME_NAME } from '../lib/game';
+
+const TAGLINE = {
+  take2: 'Crusades, the way we play it at home.',
+  madagascar: 'Turn a card and hope it is not the suit on top.',
+};
 
 export function Home({ navigate }: { navigate(path: string): void }) {
   const [name, setName] = useState(loadName);
@@ -34,8 +40,8 @@ export function Home({ navigate }: { navigate(path: string): void }) {
   return (
     <main className="screen">
       <div className="brand">
-        <h1>Take 2</h1>
-        <p>Crusades, the way we play it at home.</p>
+        <h1>{GAME_NAME[GAME]}</h1>
+        <p>{TAGLINE[GAME]}</p>
       </div>
       <form className="field" onSubmit={create}>
         <label htmlFor="name">Your name</label>

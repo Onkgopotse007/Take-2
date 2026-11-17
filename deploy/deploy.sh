@@ -34,7 +34,8 @@ echo "==> Removing old take2 images on the VM"
 remote "sudo k3s ctr images ls -q | grep -E '^(docker.io/library|ghcr.io/onkgopotse007)/take2-(server|web):' | grep -v ':$TAG\$' | xargs -r sudo k3s ctr images rm" || true
 
 echo "==> Checking"
-SITE=take2.code-crunchers.com
-remote "curl -fsS --retry 10 --retry-delay 3 --retry-all-errors --resolve $SITE:443:127.0.0.1 -o /dev/null -w 'web: HTTP %{http_code}\n' https://$SITE/ &&
-        curl -fsS --resolve $SITE:443:127.0.0.1 https://$SITE/api/healthz && echo"
+for SITE in take2.code-crunchers.com madagascar.code-crunchers.com; do
+  remote "curl -fsS --retry 10 --retry-delay 3 --retry-all-errors --resolve $SITE:443:127.0.0.1 -o /dev/null -w '$SITE: HTTP %{http_code}\n' https://$SITE/ &&
+          curl -fsS --resolve $SITE:443:127.0.0.1 https://$SITE/api/healthz && echo"
+done
 echo "Deployed $TAG."

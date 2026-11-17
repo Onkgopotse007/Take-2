@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { boot, type ColyseusTestServer } from '@colyseus/testing';
 import type { Room as ClientRoom } from '@colyseus/sdk';
 import { createApp } from '../src/app';
-import type { TableSnapshot } from '../src/protocol';
+import type { MadagascarSnapshot, TableSnapshot } from '../src/protocol';
 import { CODE_LENGTH } from '../src/random';
 import { TableRoom } from '../src/room';
 import { DEFAULT_TIMINGS } from '../src/table';
@@ -148,8 +148,42 @@ describe('TableRoom', () => {
     await host.leave();
   });
 
+  it('says so when a Madagascar code is used on the Take 2 site', async () => {
+    const host = await colyseus.sdk.create('madagascar', { name: 'A', game: 'madagascar' });
+    await expect(colyseus.sdk.joinById(host.roomId, { name: 'B' })).rejects.toThrow(`Table ${host.roomId} is a Madagascar table.`);
+    await host.leave();
+  });
+
   it('serves a health check', async () => {
     const res = await colyseus.http.get('/healthz');
     expect(res.data).toEqual({ ok: true });
+  });
+});
+
+describe('MadagascarRoom', () => {
+  it('creates a table others join by code, and deals nobody any cards', async () => {
+    const host = await colyseus.sdk.create('madagascar', { name: 'Thabo', game: 'madagascar' });
+    const guest = await colyseus.sdk.joinById(host.roomId, { name: 'Neo', game: 'madagascar' });
+    const playing = new Promise<MadagascarSnapshot>((resolve) => {
+      const off = guest.onMessage('table', (snap: MadagascarSnapshot) => {
+        if (snap.status === 'playing') {
+          off();
+          resolve(snap);
+        }
+      });
+    });
+    host.send('start', {});
+    const snap = await playing;
+    expect(snap.seats.map((s) => s.name)).toEqual(['Thabo', 'Neo']);
+    expect(snap.game!.circle).toHaveLength(52);
+    expect(snap.game!.hand).toEqual([]);
+    await guest.leave();
+    await host.leave();
+  });
+
+  it('says so when a Take 2 code is used on the Madagascar site', async () => {
+    const host = await colyseus.sdk.create('table', { name: 'A' });
+    await expect(colyseus.sdk.joinById(host.roomId, { name: 'B', game: 'madagascar' })).rejects.toThrow(`Table ${host.roomId} is a Take 2 table.`);
+    await host.leave();
   });
 });

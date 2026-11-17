@@ -22,7 +22,8 @@
   "dependencies": {
     "@colyseus/core": "^0.18.18",
     "@colyseus/ws-transport": "^0.18.4",
-    "@take2/engine": "workspace:*"
+    "@take2/engine": "workspace:*",
+    "@take2/madagascar": "workspace:*"
   },
   "exports": {
     "./protocol": "./src/protocol.ts"
