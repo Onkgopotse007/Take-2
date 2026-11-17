@@ -1,11 +1,11 @@
 import { SUITS, type Card, isRank } from './cards';
-import { canPlayCard, canStartOn, checksWith, activePlayers, playersToAct, topCard, TOSS_LAYOUT_SIZE } from './engine';
+import { canPlayCard, canStartOn, lastEightNamesNoSuit, activePlayers, playersToAct, topCard, TOSS_LAYOUT_SIZE } from './engine';
 import type { GameState, Lead, Move, PlayerId, RoundResult, Turn } from './types';
 
 export interface PublicPlayer {
   id: PlayerId;
   cardCount: number;
-  status: 'active' | 'eliminated';
+  status: 'active' | 'eliminated' | 'finished';
   onAir: boolean;
 }
 
@@ -36,6 +36,10 @@ export interface PlayerView {
   winner: PlayerId | null;
   contender: PlayerId | null;
   voided: boolean;
+  noElimination: boolean;
+  /** No elimination: players who have checked, first place first. */
+  finished: PlayerId[];
+  ranking: PlayerId[] | null;
 }
 
 export function getPlayerView(state: GameState, me: PlayerId): PlayerView {
@@ -67,6 +71,9 @@ export function getPlayerView(state: GameState, me: PlayerId): PlayerView {
     winner: state.winner,
     contender: state.contender,
     voided: state.voided,
+    noElimination: state.noElimination,
+    finished: state.finished.slice(),
+    ranking: state.ranking ? state.ranking.slice() : null,
   };
 }
 
@@ -88,7 +95,7 @@ export function getLegalMoves(state: GameState, player: PlayerId): Move[] {
 
   // An 8 names the next suit, unless it is a last card that ends the round.
   const playMoves = (card: Card): Move[] =>
-    isRank(card, '8') && !(self.hand.length === 1 && checksWith(state.mode, card))
+    isRank(card, '8') && !(self.hand.length === 1 && lastEightNamesNoSuit(state, card))
       ? SUITS.map((suit) => ({ type: 'play', player, cardId: card.id, suit }) as Move)
       : [{ type: 'play', player, cardId: card.id }];
 

@@ -10,6 +10,7 @@ export {
   MMA_T_LIMIT,
   RULES,
   checksWith,
+  lastEightNamesNoSuit,
   createGame,
   applyMove,
   activePlayers,

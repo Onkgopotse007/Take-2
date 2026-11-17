@@ -11,12 +11,15 @@ export type GameMode = 'classic' | 'mmaT';
 
 export interface GameOptions {
   mode?: GameMode;
+  /** Works with any mode. See `GameState.noElimination`. */
+  noElimination?: boolean;
 }
 
 export interface PlayerState {
   id: PlayerId;
   hand: Card[];
-  status: 'active' | 'eliminated';
+  /** `finished`: checked in a no-elimination game, and has their place. */
+  status: 'active' | 'eliminated' | 'finished';
   /** Played down to 2 or 1 cards without announcing. Others may call them out until their next turn. */
   callable: boolean;
 }
@@ -90,6 +93,18 @@ export interface GameState {
   contender: PlayerId | null;
   /** Mma T's rules: the game ended with no winner. */
   voided: boolean;
+  /**
+   * Nobody is knocked out on points. The game is one round: each player who checks finishes in the
+   * next place and the rest play on, until one of the last two checks. Mma T's first-checker rule
+   * does not apply.
+   */
+  noElimination: boolean;
+  /** No elimination: players who have checked, in order. */
+  finished: PlayerId[];
+  /** Players who left or forfeited, in order. */
+  left: PlayerId[];
+  /** No elimination, once the game is over: every player, first place first. Leavers come last. */
+  ranking: PlayerId[] | null;
 }
 
 export type Move =

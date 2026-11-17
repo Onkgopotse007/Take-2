@@ -10,8 +10,8 @@ export type ClientMove = DistributiveOmit<Exclude<Move, { type: 'nextRound' } | 
 export interface ClientMessages {
   /** Host only: start the game (or a rematch once it has finished). */
   start: Record<string, never>;
-  /** Host only, between games: which rules the next game uses. */
-  setMode: { mode: GameMode };
+  /** Host only, between games: which rules the next game uses. Leaving out `noElimination` keeps it as it is. */
+  setMode: { mode: GameMode; noElimination?: boolean };
   move: ClientMove;
   /** Ask for a fresh `table` snapshot. Send once after registering message handlers. */
   sync: Record<string, never>;
@@ -43,6 +43,8 @@ export interface TableSnapshot {
   status: TableStatus;
   /** Rules for the next game (and the current one, which is also in `game.mode`). */
   mode: GameMode;
+  /** Whether the next game is played with no elimination (on top of `mode`). */
+  noElimination: boolean;
   /** Games won at this table, by player id. Void games count for nobody. */
   wins: Record<string, number>;
   game: PlayerView | null;

@@ -1,23 +1,23 @@
 import { useState } from 'react';
-import type { GameMode } from '@take2/engine';
 import type { TableSnapshot } from '@take2/server/protocol';
 import { initials } from '../lib/layout';
 import { shareTable } from '../lib/share';
 import { HowToList } from './HowTo';
-import { MmaTNote, MmaTRulesList, RulesPicker } from './Rules';
+import { MmaTNote, MmaTRulesList, NoEliminationRulesList, RulesPicker, type TableRules } from './Rules';
 
 interface Props {
   snapshot: TableSnapshot;
   onStart(): void;
-  onSetMode(mode: GameMode): void;
+  onSetRules(rules: TableRules): void;
   onLeave(): void;
 }
 
-export function Lobby({ snapshot, onStart, onSetMode, onLeave }: Props) {
+export function Lobby({ snapshot, onStart, onSetRules, onLeave }: Props) {
   const [note, setNote] = useState('');
   const isHost = snapshot.hostId === snapshot.you;
   const host = snapshot.seats.find((s) => s.id === snapshot.hostId);
   const enough = snapshot.seats.length >= 2;
+  const rules: TableRules = { mode: snapshot.mode, noElimination: snapshot.noElimination };
 
   return (
     <main className="screen">
@@ -53,14 +53,21 @@ export function Lobby({ snapshot, onStart, onSetMode, onLeave }: Props) {
         <h2 id="lobby-rules" style={{ margin: 0, fontSize: 18 }}>
           Rules
         </h2>
-        <RulesPicker mode={snapshot.mode} isHost={isHost} onChange={onSetMode} />
+        <RulesPicker rules={rules} isHost={isHost} onChange={onSetRules} />
       </section>
 
       {snapshot.mode === 'mmaT' && (
         <section className="tips-card" aria-labelledby="lobby-mma-t">
           <h2 id="lobby-mma-t">Mma T's house rules</h2>
           <MmaTNote />
-          <MmaTRulesList />
+          <MmaTRulesList noElimination={rules.noElimination} />
+        </section>
+      )}
+
+      {rules.noElimination && (
+        <section className="tips-card" aria-labelledby="lobby-no-elimination">
+          <h2 id="lobby-no-elimination">No elimination</h2>
+          <NoEliminationRulesList />
         </section>
       )}
 

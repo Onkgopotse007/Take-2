@@ -135,7 +135,7 @@ describe('Round end screens', () => {
     },
   } as const;
   const who = (id: string, asObject = false) => ({ a: asObject ? 'you' : 'You', b: 'Neo', c: 'Kago' })[id] ?? id;
-  const rules = { mode: 'classic' as const, onSetMode: () => {}, tally: [] };
+  const rules = { rules: { mode: 'classic' as const, noElimination: false }, onSetRules: () => {}, tally: [] };
 
   it('lets a tossing player pick two face-down cards', async () => {
     const onToss = vi.fn();
@@ -185,6 +185,27 @@ describe('Round end screens', () => {
     render(<ResultsSheet view={view as never} who={who} secondsLeft={5} isHost hostName="You" onPlayAgain={() => {}} onLeave={() => {}} {...rules} />);
     expect(screen.getByText(/Neo is going for the win/)).toBeInTheDocument();
   });
+
+  it('ranks everyone at the end of a no-elimination game, with leavers marked', () => {
+    const view = {
+      ...base,
+      noElimination: true,
+      phase: 'gameOver',
+      winner: 'b',
+      roundResult: null,
+      finished: ['b', 'a'],
+      ranking: ['b', 'a', 'c'],
+      players: [
+        { id: 'a', cardCount: 0, status: 'finished', onAir: false },
+        { id: 'b', cardCount: 0, status: 'finished', onAir: false },
+        { id: 'c', cardCount: 0, status: 'eliminated', onAir: false },
+      ],
+    };
+    render(<ResultsSheet view={view as never} who={who} secondsLeft={null} isHost hostName="You" onPlayAgain={() => {}} onLeave={() => {}} {...rules} />);
+    expect(screen.getByRole('heading', { name: 'Neo wins!' })).toBeInTheDocument();
+    const places = screen.getByRole('list', { name: 'Places' });
+    expect([...places.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['1stNeo', '2ndYou', '3rdKagoleft']);
+  });
 });
 
 describe('Card faces', () => {
@@ -211,19 +232,51 @@ describe('DirectionArrows', () => {
   });
 });
 
+describe('Seat places', () => {
+  it('shows the place of a player who has finished', () => {
+    render(
+      <Seat
+        seat={{ id: 'b', name: 'Neo', cardCount: 0, connected: true, eliminated: false, onAir: false, place: 2 }}
+        left={50}
+        top={20}
+        compact={false}
+        isTurn={false}
+        secondsLeft={null}
+        speech={null}
+        canCallOut={false}
+        onCallOut={() => {}}
+      />,
+    );
+    expect(screen.getByText('2nd')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /finished 2nd/ })).toBeInTheDocument();
+  });
+});
+
 describe('Rules', () => {
   it('lets the host choose the rules', async () => {
     const onChange = vi.fn();
-    render(<RulesPicker mode="classic" isHost onChange={onChange} />);
+    render(<RulesPicker rules={{ mode: 'classic', noElimination: false }} isHost onChange={onChange} />);
     expect(screen.getByRole('radio', { name: /Classic/ })).toHaveAttribute('aria-checked', 'true');
     await userEvent.click(screen.getByRole('radio', { name: /Mma T's house rules/ }));
-    expect(onChange).toHaveBeenCalledWith('mmaT');
+    expect(onChange).toHaveBeenCalledWith({ mode: 'mmaT', noElimination: false });
+  });
+
+  it('lets the host switch no elimination on with either set of rules', async () => {
+    const onChange = vi.fn();
+    render(<RulesPicker rules={{ mode: 'mmaT', noElimination: false }} isHost onChange={onChange} />);
+    const toggle = screen.getByRole('switch', { name: /No elimination/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith({ mode: 'mmaT', noElimination: true });
   });
 
   it('only shows the rules to everyone else', () => {
-    render(<RulesPicker mode="mmaT" isHost={false} onChange={() => {}} />);
+    const { rerender } = render(<RulesPicker rules={{ mode: 'mmaT', noElimination: false }} isHost={false} onChange={() => {}} />);
     expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
     expect(screen.getByText("Mma T's house rules")).toBeInTheDocument();
+    rerender(<RulesPicker rules={{ mode: 'mmaT', noElimination: true }} isHost={false} onChange={() => {}} />);
+    expect(screen.getByText("Mma T's house rules, no elimination")).toBeInTheDocument();
   });
 
   it('plays a last 8 straight away when it ends the round', async () => {

@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import type { GameMode } from '@take2/engine';
 import { shareTable } from '../lib/share';
 import { HowToSheet } from './HowTo';
+import type { TableRules } from './Rules';
 
-export function Menu({ code, mode, onClose, onLeave }: { code: string; mode: GameMode; onClose(): void; onLeave(): void }) {
+export function Menu({ code, rules, onClose, onLeave }: { code: string; rules: TableRules; onClose(): void; onLeave(): void }) {
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [howTo, setHowTo] = useState(false);
-  if (howTo) return <HowToSheet mode={mode} onClose={() => setHowTo(false)} />;
+  if (howTo) return <HowToSheet rules={rules} onClose={() => setHowTo(false)} />;
   return (
     <>
       <div className="scrim" onClick={onClose} />

@@ -122,6 +122,15 @@ The host picks the rules in the lobby, or on the results sheet before a rematch.
 - **Winning.** The first player to check in a game is the only one who can win it. They must keep checking each round until every other player is eliminated (with 2 players left, their check wins, as in classic). If anyone else checks first, the game is void: no winner, nobody is eliminated, and the host starts a new game. If that player leaves, the game is also void. Anyone else leaving is out as usual.
 - The table shows who is going for the win, and keeps a tally of wins for as long as it stays open (void games count for nobody; the tally also runs for classic games).
 
+**No elimination** is a switch the host turns on with either set of rules. It changes only what is listed here:
+
+- **Nobody is knocked out on points.** There is no scoring and no toss, and the game is a single round.
+- **Checking finishes you.** A check is made as under the chosen rules. The checker takes the next place (the first checker wins) and leaves play. Everyone else keeps their hands and the same round carries on from the checker's play, which has its usual effect. With Mma T's rules this includes a checking action card: a 2 makes the next player pick 2, a 7 skips, a J reverses, and a last 8 names a suit.
+- **The end.** The game ends when one of the last two players checks. They take the next place and the other comes after them.
+- **Leaving.** A player who leaves or forfeits comes last; of several, the first to leave comes last of all. If only one player is left playing, they take the next place and the game ends.
+- Mma T's first-checker rule (contender and void games) does not apply.
+- Each seat shows its place once it has checked. At the end, the results show every player ranked. The first place counts in the win tally.
+
 ## Deployment
 
 ### VM

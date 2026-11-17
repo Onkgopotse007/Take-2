@@ -1,7 +1,7 @@
-import type { GameMode, PlayerView } from '@take2/engine';
-import type { Namer } from '../lib/feed';
+import type { PlayerView } from '@take2/engine';
+import { ordinal, type Namer } from '../lib/feed';
 import { ResultsList } from './Results';
-import { RulesPicker } from './Rules';
+import { RulesPicker, type TableRules } from './Rules';
 
 interface Props {
   view: PlayerView;
@@ -12,13 +12,13 @@ interface Props {
   onPlayAgain(): void;
   onLeave(): void;
   /** Rules for the next game. */
-  mode: GameMode;
-  onSetMode(mode: GameMode): void;
+  rules: TableRules;
+  onSetRules(rules: TableRules): void;
   /** Games won at this table, most first. */
   tally: { id: string; wins: number }[];
 }
 
-export function ResultsSheet({ view, who, secondsLeft, isHost, hostName, onPlayAgain, onLeave, mode, onSetMode, tally }: Props) {
+export function ResultsSheet({ view, who, secondsLeft, isHost, hostName, onPlayAgain, onLeave, rules, onSetRules, tally }: Props) {
   const over = view.phase === 'gameOver';
   const checker = view.roundResult?.checker;
   const title = over
@@ -51,6 +51,20 @@ export function ResultsSheet({ view, who, secondsLeft, isHost, hostName, onPlayA
         <h2 id="results-title">{title}</h2>
         {note && <p>{note}</p>}
         <ResultsList view={view} who={who} />
+        {view.ranking && (
+          <ol className="ranking" aria-label="Places">
+            {view.ranking.map((id, i) => {
+              const leftGame = view.players.find((p) => p.id === id)?.status === 'eliminated';
+              return (
+                <li key={id}>
+                  <span className="place">{ordinal(i + 1)}</span>
+                  <span className="who">{who(id)}</span>
+                  {leftGame && <span className="muted">left</span>}
+                </li>
+              );
+            })}
+          </ol>
+        )}
         {over ? (
           <>
             {tally.length > 0 && (
@@ -67,7 +81,7 @@ export function ResultsSheet({ view, who, secondsLeft, isHost, hostName, onPlayA
               </div>
             )}
             {isHost && <strong>Rules for the next game</strong>}
-            <RulesPicker mode={mode} isHost={isHost} onChange={onSetMode} />
+            <RulesPicker rules={rules} isHost={isHost} onChange={onSetRules} />
             {isHost ? (
               <button type="button" className="btn btn-primary" onClick={onPlayAgain}>
                 Play again

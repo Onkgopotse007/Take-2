@@ -101,6 +101,7 @@ export class Table {
   /** Timed-out turns in a row, per player. */
   private missed = new Map<string, number>();
   private mode: GameMode = 'classic';
+  private noElimination = false;
   private wins = new Map<string, number>();
 
   constructor(options: TableOptions) {
@@ -191,7 +192,7 @@ export class Table {
     this.game = createGame(
       this.seats.map((s) => s.id),
       this.rng,
-      { mode: this.mode },
+      { mode: this.mode, noElimination: this.noElimination },
     );
     this.raceOpensAt = this.scheduler.now() + this.timings.countdownMs;
     this.onStatusChange('playing');
@@ -201,11 +202,13 @@ export class Table {
 
   /** Host only, between games. */
   setMode(id: string, raw: unknown): void {
-    const mode = (raw as { mode?: unknown } | null)?.mode;
+    const { mode, noElimination } = (raw ?? {}) as { mode?: unknown; noElimination?: unknown };
     if (mode !== 'classic' && mode !== 'mmaT') return this.reject(id, 'BAD_MESSAGE');
+    if (noElimination !== undefined && typeof noElimination !== 'boolean') return this.reject(id, 'BAD_MESSAGE');
     if (this.status === 'playing') return this.reject(id, 'GAME_IN_PROGRESS');
     if (id !== this.hostId) return this.reject(id, 'NOT_HOST');
     this.mode = mode;
+    if (noElimination !== undefined) this.noElimination = noElimination;
     this.broadcastSnapshots();
   }
 
@@ -250,6 +253,7 @@ export class Table {
       seatKey: this.keys.get(id) ?? null,
       status: this.status,
       mode: this.mode,
+      noElimination: this.noElimination,
       wins: Object.fromEntries(this.wins),
       game: this.game ? getPlayerView(this.game, id) : null,
       raceOpensAt: this.raceOpensAt,
